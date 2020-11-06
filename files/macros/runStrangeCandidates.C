@@ -31,7 +31,7 @@
 #endif
 
 // Track Chi2Tot cut
-double ChiTot = 1.5;
+double ChiTot = 10;
 
 // settings for signal generation
 double yminSG = -10.; // min y to generate
@@ -47,7 +47,7 @@ Double_t CosThetaStar(TLorentzVector &parent, TLorentzVector &dauk, int pdgMothe
 //measurements for phi(pdg code 333) and K0s(pdg code 333)
 //per il K0s ho usato le misure di NA49 del K+
 const int NEnergy = 5;
-const int NParticles =2
+const int NParticles = 2;
 double Elab[NEnergy] = {20,30,40,80,158};
 double Tslope[NParticles][NEnergy] = {{196.8,237.4,244.6,239.8,298.7},{0,0,244.6,239.8,298.7}};
 double sigma_rapidity[NParticles][NEnergy] = {{0.425,0.538,0.696,0.658,1.2},{0,0,0.694,0.742,0.839}};
@@ -269,10 +269,10 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
     } while (np < 0);
 
     Int_t arrpdgdau[2];
-    Double_t ptK = -999.;
-    Double_t ptPi = -999.;
-    Double_t yK=-999.;
-    Double_t yPi = -999.;
+    Double_t ptPos = -999.;
+    Double_t ptNeg = -999.;
+    Double_t yPos=-999.;
+    Double_t yNeg = -999.;
     Int_t icount = 0;
     Double_t secvertgenK[3]={0.,0.,0.};
     Double_t secvertgenPi[3]={0.,0.,0.};
@@ -316,9 +316,9 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
         if (kf > 0){
           // Positive daughter
           pdgDaughterPos = kf;
-          ptK = iparticle1->Pt();
-          yK = iparticle1->Y();
-          hptDauPlus->Fill(ptGenD,ptK);
+          ptPos = iparticle1->Pt();
+          yPos = iparticle1->Y();
+          hptDauPlus->Fill(ptGenD,ptPos);
           hyDauPlus->Fill(iparticle1->Y());
           secvertgenK[0] = iparticle1->Vx();
           secvertgenK[1] = iparticle1->Vy();
@@ -330,9 +330,9 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
         }else if (kf < 0){
           // Negative daughter
           pdgDaughterNeg = kf;
-          ptPi = iparticle1->Pt();
-          yPi = iparticle1->Y();
-          hptDauMinus->Fill(ptGenD,ptPi);
+          ptNeg = iparticle1->Pt();
+          yNeg = iparticle1->Y();
+          hptDauMinus->Fill(ptGenD,ptNeg);
           hyDauMinus->Fill(iparticle1->Y());
           secvertgenPi[0] = iparticle1->Vx();
           secvertgenPi[1] = iparticle1->Vy();
@@ -344,7 +344,7 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
         }
       }
     }
-    if (ptK > 0 && ptPi > 0) hyDau2D->Fill(yPi, yK);
+    if (ptPos > 0 && ptNeg > 0) hyDau2D->Fill(yNeg, yPos);
     if (nrec < 2) continue;
     
     recProbe[0].PropagateToDCA(&recProbe[1]);
