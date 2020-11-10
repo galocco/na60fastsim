@@ -59,8 +59,8 @@ double Tslope[2][NParticles][NEnergy] = {{{196.8,237.4,244.6,239.8,298.7},{0,0,2
                                          {{196.8,237.4,244.6,239.8,298.7},{0,0,226,217,226},{339,284,301,292,303},{0,0,218,0,259},{311,277,255,321,0}}};//antimatter
 //sigma parameter of the gaussians of the rapidity distribution [matter/antimatter][particle][beam energy]
 //                                                          phi                        K                       Lambda                Omega                    Csi
-double sigma_rapidity[2][NParticles][NEnergy] = {{{0.425,0.538,0.696,0.658,1.2},{0,0,0.725,0.792,0.88},{0.51,0.66,0.91,0.87,0},{0,0,0.6,0,1.2},{0.45,0.56,0.76,0.71,1.18},//matter
-                                                 {{0.425,0.538,0.696,0.658,1.2},{0,0,0.635,0.705,0.81},{0,0,0.71,0.85,0.95},{0,0,0.6,0,1.0},{0,0,0,0,0}};//antimatter
+double sigma_rapidity[2][NParticles][NEnergy] = {{{0.425,0.538,0.696,0.658,1.2},{0,0,0.725,0.792,0.88},{0.51,0.66,0.91,0.87,0},{0,0,0.6,0,1.2},{0.45,0.56,0.76,0.71,1.18}},//matter
+                                                 {{0.425,0.538,0.696,0.658,1.2},{0,0,0.635,0.705,0.81},{0,0,0.71,0.85,0.95},{0,0,0.6,0,1.0},{0,0,0,0,0}}};//antimatter
 //mu paramter of the gaussian of the rapidity distribution [matter/antimatter][particle][beam energy]
 //                                                       phi                        K                   Lambda                   Omega                    Csi
 double y0_rapidity[2][NParticles][NEnergy] = {{{0.425,0.538,0.487,0.682,1.451},{0,0,0.694,0.742,0.839},{0.49,0.59,0.65,0.94,0},{0,0,0,0,0},{0.45,0.47,0.54,0.68,0}},//matter
@@ -269,10 +269,10 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
   Float_t* arrnt = new Float_t[(nbody == 2) ? 11 : 13];
   double y0 = GetY0(Eint);
   //read the pdg code of the daughters
-  int pdg_dau[2];
+  int pdg_dau[2] = {0,0};
   GetPDGDaughters(pdgParticle,pdg_dau,matter);
   //if decay daughter is unstable read the pdg code of its daughters
-  int pdg_dau2[2];
+  int pdg_dau2[2] = {0,0};
   if(nbody == 3){
     GetPDGDaughters(pdg_unstable_dau,pdg_dau2,matter);
   }
@@ -357,6 +357,16 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
           daurecswapmass[0].SetXYZM(pxyz[0], pxyz[1], pxyz[2],(iparticle1->GetMass() == massPos)? massNeg : massPos);
           hptDau[(crg == 1)? 0 : 1]->Fill(ptGen,ptDau[nrec]);
           hyDau[(crg == 1)? 0 : 1]->Fill(yDau[nrec]);
+        }
+        else{
+          if((pdg_dau[0] == kf || pdg_dau[1] == kf) && nrec==0){
+            hptDau[(crg == 1)? 0 : 1]->Fill(ptGen,ptDau[nrec]);
+            hyDau[(crg == 1)? 0 : 1]->Fill(yDau[nrec]);
+          }
+          else{
+            hptDau[(kf == pdg_dau2[0])? 1 : 2]->Fill(ptGen,ptDau[nrec]);
+            hyDau[(kf == pdg_dau2[0])? 1 : 2]->Fill(yDau[nrec]);
+          }
         }
         recProbe[nrec] = *trw;
         nrec++;
@@ -623,6 +633,14 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
     hptDau[1]->SetName("hptDauNeg");
     hyDau[1]->SetName("hyDauNeg");
     hyDau2D->Write();
+  }
+  else{
+    hptDau[0]->SetName(Form("hptDau_%i",(pdg_dau[0] == pdg_unstable_dau) ? pdg_dau[1] : pdg_dau[0]));
+    hyDau[0]->SetName(Form("hyDau_%i",(pdg_dau[0] == pdg_unstable_dau) ? pdg_dau[1] : pdg_dau[0]));
+    hptDau[1]->SetName(Form("hptDau2_%i",pdg_dau2[0]));
+    hyDau[1]->SetName(Form("hyDau2_%i",pdg_dau2[0]));
+    hptDau[2]->SetName(Form("hptDau2%i",pdg_dau2[1]));
+    hyDau[2]->SetName(Form("hyDau2_%i",pdg_dau2[1]));
   }
   for(int i = 0; i < nbody; i++){
     hptDau[i]->Write();
@@ -1029,7 +1047,6 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFile="treeBkgEvents.root"
           hMassAll->Fill(invMassD);
           if(invMassD>0.5*massM  && invMassD<1.5*massM){
             // range to fill histos
-            //TODO: controllare questi valori
             if(invMassD>0.8*massM && invMassD<1.2*massM) countCandInPeak++;
             Float_t d1 = recProbe[1].GetX() - recProbe[0].GetX();
             Float_t d2 = recProbe[1].GetY() - recProbe[0].GetY();
