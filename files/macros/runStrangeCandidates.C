@@ -31,7 +31,7 @@
 #endif
 
 // Track Chi2Tot cut
-double ChiTot = 10;
+double ChiTot = 3;
 
 // settings for signal generation
 // rapidity range
@@ -204,7 +204,6 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
   }
   TH2F *hyDau2D = new TH2F("hyDau2D", "y negative daughter vs y positive daughter;y_{-};y_{+};counts", 50, 0., 5., 50, 0., 5.);
   
-
   TH1D* hYRecoAll = new TH1D("hYRecoAll", "Reconstructed y all match;y;counts", 80., 1., 5.4);
   TH1D* hYGenRecoAll = new TH1D("hYGenRecoAll", "Generated y all match;y;counts", 80., 1., 5.4);
   TH2F* hYPtRecoFake = new TH2F("hYPtRecoFake", "y-#it{p}_{T} fake match;;counts", 80, 1.0, 5.4, 40, ptminSG, ptmaxSG);
@@ -273,9 +272,9 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
   GetPDGDaughters(pdgParticle,pdg_dau,matter);
   //if decay daughter is unstable read the pdg code of its daughters
   int pdg_dau2[2] = {0,0};
-  if(nbody == 3){
+  if(nbody == 3)
     GetPDGDaughters(pdg_unstable_dau,pdg_dau2,matter);
-  }
+
   Double_t massPos = TDatabasePDG::Instance()->GetParticle(pdg_dau[0])->Mass();
   Double_t massNeg = TDatabasePDG::Instance()->GetParticle(pdg_dau[1])->Mass();
 
@@ -531,10 +530,10 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
     arrsp[4] = cosp;
     arrsp[5] = TMath::Min(TMath::Min(TMath::Abs(d0xy[0]),TMath::Abs(d0xy[1])),TMath::Abs(d0xy[2]));
     arrsp[6] = (nbody == 2) ? d0xy[0] * d0xy[1] : sigmaVert;
-    arrsp[7] = dca;
+    arrsp[7] = (nbody == 2) ? dca : (dca12+dca13+dca23)/3.;
     arrsp[8] = TMath::Min(recProbe[0].GetTrack()->Pt(),recProbe[1].GetTrack()->Pt());
     arrsp[9] = TMath::Abs(ipD);	    
-    arrsp[10] = cts;      
+    arrsp[10] = (nbody == 2) ? cts : sigmaVert;      
     hsp->Fill(arrsp);
     
     if (ntcand){
@@ -758,132 +757,132 @@ void MakeCombinBkgCandidates3Body(const char* trackTreeFile="treeBkgEvents.root"
       if (d0x1 < 0) d0xy1 *= -1;
 
       for (Int_t itr2 = 0; itr2 < arrentr; itr2++){
-	if(itr2==itr) continue;
-	KMCProbeFwd *tr2 = (KMCProbeFwd *)arr->At(itr2);
-	Float_t ch2 = tr2->GetCharge();
-	// convention: charge signs are ordered as +-+ or -+-
-	if (ch1 * ch2 > 0) continue;
-	recProbe[1] = *tr2;
-	recProbe[1].PropagateToZBxByBz(vprim[2]);
-	recProbe[1].GetPXYZ(pxyz1);
-	Double_t d0x2 = recProbe[1].GetX();
-	Double_t d0y2 = recProbe[1].GetY();
-	Double_t d0xy2 = TMath::Sqrt(d0x2 * d0x2 + d0y2 * d0y2);
-	if (d0x2 < 0) d0xy2 *= -1;
-	// recProbe[0].PropagateToDCA(&recProbe[1]);
-	// Float_t d1 = recProbe[1].GetX() - recProbe[0].GetX();
-	// Float_t d2 = recProbe[1].GetY() - recProbe[0].GetY();
-	// Float_t d3 = recProbe[1].GetZ() - recProbe[0].GetZ();
-	// Float_t dca01 = sqrt(d1 * d1 + d2 * d2 + d3 * d3);
-	// recProbe[0].PropagateToZBxByBz(vprim[2]);
-	// recProbe[1].PropagateToZBxByBz(vprim[2]);
+        if(itr2==itr) continue;
+        KMCProbeFwd *tr2 = (KMCProbeFwd *)arr->At(itr2);
+        Float_t ch2 = tr2->GetCharge();
+        // convention: charge signs are ordered as +-+ or -+-
+        if (ch1 * ch2 > 0) continue;
+        recProbe[1] = *tr2;
+        recProbe[1].PropagateToZBxByBz(vprim[2]);
+        recProbe[1].GetPXYZ(pxyz1);
+        Double_t d0x2 = recProbe[1].GetX();
+        Double_t d0y2 = recProbe[1].GetY();
+        Double_t d0xy2 = TMath::Sqrt(d0x2 * d0x2 + d0y2 * d0y2);
+        if (d0x2 < 0) d0xy2 *= -1;
+        // recProbe[0].PropagateToDCA(&recProbe[1]);
+        // Float_t d1 = recProbe[1].GetX() - recProbe[0].GetX();
+        // Float_t d2 = recProbe[1].GetY() - recProbe[0].GetY();
+        // Float_t d3 = recProbe[1].GetZ() - recProbe[0].GetZ();
+        // Float_t dca01 = sqrt(d1 * d1 + d2 * d2 + d3 * d3);
+        // recProbe[0].PropagateToZBxByBz(vprim[2]);
+        // recProbe[1].PropagateToZBxByBz(vprim[2]);
 
-	for (Int_t itr3 = itr2+1; itr3 < arrentr; itr3++){
-	  if(itr3==itr) continue;
-	  KMCProbeFwd *tr3 = (KMCProbeFwd *)arr->At(itr3);
-	  Float_t ch3 = tr3->GetCharge();
-	  // convention: charge signs are ordered as +-+ or -+-
-	  if (ch3 * ch2 > 0) continue;
-	  recProbe[2] = *tr3;
-	  recProbe[2].PropagateToZBxByBz(vprim[2]);
-	  recProbe[2].GetPXYZ(pxyz2);
-	  Double_t d0x3 = recProbe[2].GetX();
-	  Double_t d0y3 = recProbe[2].GetY();
-	  Double_t d0xy3 = TMath::Sqrt(d0x3 * d0x3 + d0y3 * d0y3);
-	  if (d0x3 < 0) d0xy3 *= -1;
-	  //printf("d0xy1 = %f, d0xy2 = %f \n", d0xy1, d0xy2);
+        for (Int_t itr3 = itr2+1; itr3 < arrentr; itr3++){
+          if(itr3==itr) continue;
+          KMCProbeFwd *tr3 = (KMCProbeFwd *)arr->At(itr3);
+          Float_t ch3 = tr3->GetCharge();
+          // convention: charge signs are ordered as +-+ or -+-
+          if (ch3 * ch2 > 0) continue;
+          recProbe[2] = *tr3;
+          recProbe[2].PropagateToZBxByBz(vprim[2]);
+          recProbe[2].GetPXYZ(pxyz2);
+          Double_t d0x3 = recProbe[2].GetX();
+          Double_t d0y3 = recProbe[2].GetY();
+          Double_t d0xy3 = TMath::Sqrt(d0x3 * d0x3 + d0y3 * d0y3);
+          if (d0x3 < 0) d0xy3 *= -1;
+          //printf("d0xy1 = %f, d0xy2 = %f \n", d0xy1, d0xy2);
 
-	  for(Int_t iMassHyp=0; iMassHyp<2; iMassHyp++){
-	    // mass hypothesis: KKpi, piKK
-	    Double_t momPi=0;
-	    Double_t momK1=0;
-	    Double_t momK2=0;
-	    if(iMassHyp==0){
-	      daurec[0].SetXYZM(pxyz0[0], pxyz0[1], pxyz0[2], KMCDetectorFwd::kMassK);
-	      daurec[1].SetXYZM(pxyz1[0], pxyz1[1], pxyz1[2], KMCDetectorFwd::kMassK);
-	      daurec[2].SetXYZM(pxyz2[0], pxyz2[1], pxyz2[2], KMCDetectorFwd::kMassPi);
-	      momPi=recProbe[2].GetTrack()->P();
-	      momK1=recProbe[1].GetTrack()->P();
-	      momK2=recProbe[0].GetTrack()->P();
-	      kkpair = daurec[1];
-	      kkpair += daurec[0];
-	    }else{
-	      daurec[0].SetXYZM(pxyz0[0], pxyz0[1], pxyz0[2], KMCDetectorFwd::kMassPi);
-	      daurec[1].SetXYZM(pxyz1[0], pxyz1[1], pxyz1[2], KMCDetectorFwd::kMassK);
-	      daurec[2].SetXYZM(pxyz2[0], pxyz2[1], pxyz2[2], KMCDetectorFwd::kMassK);
-	      momPi=recProbe[0].GetTrack()->P();
-	      momK1=recProbe[1].GetTrack()->P();
-	      momK2=recProbe[2].GetTrack()->P();
-	      kkpair = daurec[1];
-	      kkpair += daurec[2];
-	    }
-	    parent = daurec[0];
-	    parent += daurec[1];
-	    parent += daurec[2];
-	    
-	    countCand++;
-	    Float_t ptD=parent.Pt();
-	    Float_t invMassD=parent.M();
-	    Float_t yD = 0.5 * TMath::Log((parent.E() + parent.Pz()) / (parent.E() - parent.Pz()));
-	    Double_t  massRecKK=kkpair.M();
-	    hYPtRecoAll->Fill(yD, ptD);
-	    hPtRecoAll->Fill(ptD);
-	    hMassAll->Fill(invMassD);
-	    hMassKK->Fill(massRecKK);
-	    if(invMassD>1.6  && invMassD<2.1){
-	      // range to fill histos
-	      if(TMath::Abs(invMassD-mass)<0.06) countCandInPeak++;
-	      hMomPion->Fill(momPi);
-	      hMomKaon->Fill(momK1);
-	      hMomKaon->Fill(momK2);
+          for(Int_t iMassHyp=0; iMassHyp<2; iMassHyp++){
+            // mass hypothesis: 123, 321, 
+            Double_t mom1=0;
+            Double_t mom2=0;
+            Double_t mom3=0;
+            if(iMassHyp==0){
+              daurec[0].SetXYZM(pxyz0[0], pxyz0[1], pxyz0[2], TDatabasePDG::Instance()->GetParticle(pdgDaughter1)->Mass());
+              daurec[1].SetXYZM(pxyz1[0], pxyz1[1], pxyz1[2], TDatabasePDG::Instance()->GetParticle(pdgDaughter2)->Mass());
+              daurec[2].SetXYZM(pxyz2[0], pxyz2[1], pxyz2[2], TDatabasePDG::Instance()->GetParticle(pdgDaughter3)->Mass());
+              mom1=recProbe[2].GetTrack()->P();
+              mom2=recProbe[1].GetTrack()->P();
+              mom3=recProbe[0].GetTrack()->P();
+              kkpair = daurec[1];
+              kkpair += daurec[0];
+            }else{
+              daurec[0].SetXYZM(pxyz0[0], pxyz0[1], pxyz0[2], TDatabasePDG::Instance()->GetParticle(pdgDaughter3)->Mass());
+              daurec[1].SetXYZM(pxyz1[0], pxyz1[1], pxyz1[2], TDatabasePDG::Instance()->GetParticle(pdgDaughter2)->Mass());
+              daurec[2].SetXYZM(pxyz2[0], pxyz2[1], pxyz2[2], TDatabasePDG::Instance()->GetParticle(pdgDaughter1)->Mass());
+              mom1=recProbe[0].GetTrack()->P();
+              mom2=recProbe[1].GetTrack()->P();
+              mom3=recProbe[2].GetTrack()->P();
+              kkpair = daurec[1];
+              kkpair += daurec[2];
+            }
+            parent = daurec[0];
+            parent += daurec[1];
+            parent += daurec[2];
+          
+            countCand++;
+            Float_t ptD=parent.Pt();
+            Float_t invMassD=parent.M();
+            Float_t yD = 0.5 * TMath::Log((parent.E() + parent.Pz()) / (parent.E() - parent.Pz()));
+            Double_t  massRecKK=kkpair.M();
+            hYPtRecoAll->Fill(yD, ptD);
+            hPtRecoAll->Fill(ptD);
+            hMassAll->Fill(invMassD);
+            hMassKK->Fill(massRecKK);
+            if(invMassD>1.6  && invMassD<2.1){
+                    // range to fill histos
+              if(TMath::Abs(invMassD-mass)<0.06) countCandInPeak++;
+              hMomPion->Fill(mom1);
+              hMomKaon->Fill(mom2);
+              hMomKaon->Fill(mom3);
 
-	      Double_t xV, yV, zV;
-	      Double_t sigmaVert;
-	      ComputeVertex(recProbe[0],recProbe[1],recProbe[2],vprim[2],xV,yV,zV,sigmaVert);
-	      Float_t dist = TMath::Sqrt(xV * xV + yV * yV + zV * zV);
-	      Float_t distXY = TMath::Sqrt(xV * xV + yV * yV);
-	      Float_t distZ = zV;
-	      Double_t vsec[3] = {xV, yV, zV};
-	      Double_t cosp = CosPointingAngle(vprim, vsec, parent);
-	      Double_t ipD = ImpParXY(vprim, vsec, parent);
-	      hCosp->Fill(cosp, ptD);
-	      //printf(" ***** ***** cos point = %f \n", cosp);	    
-	      hDistXY->Fill(distXY, ptD);
-	      hDistZ->Fill(zV, ptD);
-	      hDist->Fill(dist, ptD);
-	      hd0XY1->Fill(d0xy1, ptD);
-	      hd0XY2->Fill(d0xy2, ptD);
-	      hd0XY3->Fill(d0xy3, ptD);
-	      arrsp[0] = invMassD;
-	      arrsp[1] = ptD;
-	      arrsp[2] = dist;
-	      arrsp[3] = distXY;
-	      arrsp[4] = distZ;
-	      arrsp[5] = cosp;
-	      arrsp[6] = TMath::Min(TMath::Abs(d0xy1),TMath::Min(TMath::Abs(d0xy2),TMath::Abs(d0xy3)));
-	      arrsp[7] = sigmaVert;//TMath::Max(TMath::Abs(dca01),TMath::Max(TMath::Abs(dca12),TMath::Abs(dca02)));
-	      arrsp[8] = TMath::Min(recProbe[0].GetTrack()->Pt(),recProbe[1].GetTrack()->Pt());
-	      arrsp[9] = TMath::Abs(ipD);	    
-	      arrsp[10] = massRecKK;
-	      hsp->Fill(arrsp);
+              Double_t xV, yV, zV;
+              Double_t sigmaVert;
+              ComputeVertex(recProbe[0],recProbe[1],recProbe[2],vprim[2],xV,yV,zV,sigmaVert);
+              Float_t dist = TMath::Sqrt(xV * xV + yV * yV + zV * zV);
+              Float_t distXY = TMath::Sqrt(xV * xV + yV * yV);
+              Float_t distZ = zV;
+              Double_t vsec[3] = {xV, yV, zV};
+              Double_t cosp = CosPointingAngle(vprim, vsec, parent);
+              Double_t ipD = ImpParXY(vprim, vsec, parent);
+              hCosp->Fill(cosp, ptD);
+              //printf(" ***** ***** cos point = %f \n", cosp);	    
+              hDistXY->Fill(distXY, ptD);
+              hDistZ->Fill(zV, ptD);
+              hDist->Fill(dist, ptD);
+              hd0XY1->Fill(d0xy1, ptD);
+              hd0XY2->Fill(d0xy2, ptD);
+              hd0XY3->Fill(d0xy3, ptD);
+              arrsp[0] = invMassD;
+              arrsp[1] = ptD;
+              arrsp[2] = dist;
+              arrsp[3] = distXY;
+              arrsp[4] = distZ;
+              arrsp[5] = cosp;
+              arrsp[6] = TMath::Min(TMath::Abs(d0xy1),TMath::Min(TMath::Abs(d0xy2),TMath::Abs(d0xy3)));
+              arrsp[7] = sigmaVert;//TMath::Max(TMath::Abs(dca01),TMath::Max(TMath::Abs(dca12),TMath::Abs(dca02)));
+              arrsp[8] = TMath::Min(recProbe[0].GetTrack()->Pt(),recProbe[1].GetTrack()->Pt());
+              arrsp[9] = TMath::Abs(ipD);	    
+              arrsp[10] = massRecKK;
+              hsp->Fill(arrsp);
 	      
-	      if (ntcand){
-          arrnt[0] = invMassD;
-          arrnt[1] = ptD;
-          arrnt[2] = dist;
-          arrnt[3] = cosp;
-          arrnt[4] = d0xy1;
-          arrnt[5] = d0xy2;
-          arrnt[6] = d0xy1 * d0xy2;
-          arrnt[7] = sigmaVert;//TMath::Max(TMath::Abs(dca01),TMath::Max(TMath::Abs(dca12),TMath::Abs(dca02)));
-          arrnt[8] = TMath::Min(recProbe[0].GetTrack()->Pt(),recProbe[1].GetTrack()->Pt());
-          arrnt[9] = TMath::Max(recProbe[0].GetTrack()->Pt(),recProbe[1].GetTrack()->Pt());
-          arrnt[10] = massRecKK;
-          ntcand->Fill(arrnt);
-	      }
-	    } // check on inv mass
-	  } // loop on mass hypothesis
-	} // loop on third track
+              if (ntcand){
+                arrnt[0] = invMassD;
+                arrnt[1] = ptD;
+                arrnt[2] = dist;
+                arrnt[3] = cosp;
+                arrnt[4] = d0xy1;
+                arrnt[5] = d0xy2;
+                arrnt[6] = d0xy1 * d0xy2;
+                arrnt[7] = sigmaVert;//TMath::Max(TMath::Abs(dca01),TMath::Max(TMath::Abs(dca12),TMath::Abs(dca02)));
+                arrnt[8] = TMath::Min(recProbe[0].GetTrack()->Pt(),recProbe[1].GetTrack()->Pt());
+                arrnt[9] = TMath::Max(recProbe[0].GetTrack()->Pt(),recProbe[1].GetTrack()->Pt());
+                arrnt[10] = massRecKK;
+                ntcand->Fill(arrnt);
+              }
+            } // check on inv mass
+          } // loop on mass hypothesis
+	      } // loop on third track
       } // loop on second track
     }// loop on first track
     hcand->Fill(countCand);
@@ -920,12 +919,10 @@ void MakeCombinBkgCandidates3Body(const char* trackTreeFile="treeBkgEvents.root"
 }
 
 void MakeCombinBkgCandidates2Body(const char* trackTreeFile="treeBkgEvents.root",
-             TString suffix = "_phi",
+             TString suffix = "_K0s",
 			       Int_t nevents = 999999, 
 			       Int_t writeNtuple = kTRUE,
-             int pdgMother = 310,
-             int pdgDaughterPos = 211,
-             int pdgDaughterNeg = -211){
+             int pdgMother = 310){
 
   // Read the TTree of tracks produced with runBkgVT.C
   // Create D0 combinatorial background candidates (= OS pairs of tracks)
@@ -939,6 +936,8 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFile="treeBkgEvents.root"
   printf("Number of events in tree = %d\n",entries);
   if(nevents>entries) nevents=entries;
   else printf(" --> Analysis performed on first %d events\n",nevents);
+  int pdg_dau[2] = {0,0};
+  GetPDGDaughters(pdgMother,pdg_dau,pdgMother > 0);
 
   TDatime dt;
   static UInt_t seed = dt.Get();
@@ -972,8 +971,6 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFile="treeBkgEvents.root"
   TH2F *hResDistXY = new TH2F("hResDistXY", "", 100, -0.1, 0.1, 30, 0, 3);
   TH2F *hCosp = new TH2F("hCosp", "", 100, -1, 1, 30, 0, 3);
   TH2F *hCosThStVsMass = new TH2F("hCosThStVsMass", "", 50, 1.5, 2.5, 40, -1, 1);
-  
-  TH2F *hd0 = new TH2F("hd0", "", 100, 0, 0.1, 30, 0, 3);
   
   TH1D *hcand = new TH1D("hcand", "", 1000, 0, 500000);
   TH1D *hcandpeak = new TH1D("hcandpeak", "", 500, 0, 15000);
@@ -1025,16 +1022,15 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFile="treeBkgEvents.root"
         recProbe[1].GetPXYZ(pxyz2);
 	
         for(Int_t iMassHyp=0; iMassHyp<2; iMassHyp++){
-          // mass hypothesis: Kpi, piK
-          Int_t iKaon=-1;
+          Int_t iNeg=-1;
           if(iMassHyp==0){
-            daurec[0].SetXYZM(pxyz[0], pxyz[1], pxyz[2], TDatabasePDG::Instance()->GetParticle(pdgDaughterNeg)->Mass());
-            daurec[1].SetXYZM(pxyz2[0], pxyz2[1], pxyz2[2], TDatabasePDG::Instance()->GetParticle(pdgDaughterPos)->Mass());
-            iKaon=0;
+            daurec[0].SetXYZM(pxyz[0], pxyz[1], pxyz[2], TDatabasePDG::Instance()->GetParticle(pdg_dau[1])->Mass());
+            daurec[1].SetXYZM(pxyz2[0], pxyz2[1], pxyz2[2], TDatabasePDG::Instance()->GetParticle(pdg_dau[0])->Mass());
+            iNeg=0;
           }else{
-            daurec[0].SetXYZM(pxyz[0], pxyz[1], pxyz[2], TDatabasePDG::Instance()->GetParticle(pdgDaughterPos)->Mass());
-            daurec[1].SetXYZM(pxyz2[0], pxyz2[1], pxyz2[2], TDatabasePDG::Instance()->GetParticle(pdgDaughterNeg)->Mass());
-            iKaon=1;
+            daurec[0].SetXYZM(pxyz[0], pxyz[1], pxyz[2], TDatabasePDG::Instance()->GetParticle(pdg_dau[0])->Mass());
+            daurec[1].SetXYZM(pxyz2[0], pxyz2[1], pxyz2[2], TDatabasePDG::Instance()->GetParticle(pdg_dau[1])->Mass());
+            iNeg=1;
           }
           parent = daurec[0];
           parent += daurec[1];
@@ -1058,16 +1054,13 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFile="treeBkgEvents.root"
             hDCAx->Fill(d1, ptD);
             hDCAy->Fill(d2, ptD);
             hDCAz->Fill(d3, ptD);
-            // Float_t xP = (recProbe[1].GetX() + recProbe[0].GetX()) / 2.;
-            // Float_t yP = (recProbe[1].GetY() + recProbe[0].GetY()) / 2.;
-            // Float_t zP = (recProbe[1].GetZ() + recProbe[0].GetZ()) / 2.;
             Double_t xP, yP, zP;
             ComputeVertex(recProbe[0],recProbe[1],xP,yP,zP);
             Float_t dist = TMath::Sqrt(xP * xP + yP * yP + zP * zP);
             Float_t distXY = TMath::Sqrt(xP * xP + yP * yP);
             Double_t vsec[3] = {xP, yP, zP};
             Double_t cosp = CosPointingAngle(vprim, vsec, parent);
-            Double_t cts = CosThetaStar(parent,daurec[iKaon],pdgMother,pdgDaughterPos,pdgDaughterNeg);
+            Double_t cts = CosThetaStar(parent,daurec[iNeg],pdgMother,pdg_dau[0],pdg_dau[1]);
             Double_t ipD = ImpParXY(vprim, vsec, parent);
             hCosp->Fill(cosp, ptD);
             hCosThStVsMass->Fill(invMassD,cts);
@@ -1109,7 +1102,7 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFile="treeBkgEvents.root"
               arrnt[0] = invMassD;
               arrnt[1] = ptD;
               arrnt[2] = yD;
-              arrnt[3] = dist;
+              arrnt[3] = dist*massM*parent.P();
               arrnt[4] = cosp;
               arrnt[5] = d0xy1;
               arrnt[6] = d0xy2;
