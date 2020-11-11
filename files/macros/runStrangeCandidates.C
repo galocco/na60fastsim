@@ -43,7 +43,7 @@ double ptmaxSG = 10;
 
 double vX = 0, vY = 0, vZ = 0; // event vertex
 
-THnSparseF* CreateSparse(Int_t nbody);
+THnSparseF* CreateSparse(Double_t mass, Int_t nbody);
 TDatime dt;
 Double_t CosThetaStar(TLorentzVector &parent, TLorentzVector &dauk, int pdgMother, int pdgDaughterPos, int pdgDaughterNeg);
 //measurements for phi(pdg code 333) and K0s(pdg code 333) and lambda (pdg code 3312)
@@ -74,6 +74,7 @@ TString particle_name[NParticles] = {"phi","K0s","Lambda","Omega","Csi"};
 //pdg code of the particles
 double pdg_mother[NParticles] = {333,310,3122,3334,3312};
 //pdg code of the daughters
+//                                     K+    K-   pi+  pi-    p    pi-  Lambda  K-  Lambda pi-
 double pdg_daughter[NParticles][2] = {{321,-321},{211,-211},{2212,-211},{3122,-321},{3122,-211}};
 
 double GetTslope(int pdgParticle, double Eint, bool matter);
@@ -196,13 +197,13 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
   TH2F* hPtRecoVsGenAll = new TH2F("hPtRecoVsGenAll"," ; Generated #it{p}_{T} ; Reconstructed #it{p}_{T}",40, ptminSG, ptmaxSG,40, ptminSG, ptmaxSG);
   TH2F* hDiffPtRecoGenAll = new TH2F("hDiffPtRecoGenAll"," ; Generated #it{p}_{T} ; Reco #it{p}_{T} - Gen #it{p}_{T}",40, ptminSG, ptmaxSG,100,-0.2,0.2);
 
-  TH2F* hptDau[3];
-  TH1D* hyDau[3];
+  TH2F* hptau[3];
+  TH1D* hyau[3];
   for(int i = 0; i < nbody; i++){
-    hptDau[i] = new TH2F(Form("hptDau%i",i), " ;#it{p}_{T} (GeV/#it{c});#it{p}_{TM} (GeV/#it{c});counts", 50,0.,10.,50, 0., 10.);
-    hyDau[i] = new TH1D(Form("hyDau%i",i), ";y_{};counts", 50, 0., 5.);
+    hptau[i] = new TH2F(Form("hptau%i",i), " ;#it{p}_{T} (GeV/#it{c});#it{p}_{TM} (GeV/#it{c});counts", 50,0.,10.,50, 0., 10.);
+    hyau[i] = new TH1D(Form("hyau%i",i), ";y_{};counts", 50, 0., 5.);
   }
-  TH2F *hyDau2D = new TH2F("hyDau2D", "y negative daughter vs y positive daughter;y_{-};y_{+};counts", 50, 0., 5., 50, 0., 5.);
+  TH2F *hyau2D = new TH2F("hyau2D", "y negative daughter vs y positive daughter;y_{-};y_{+};counts", 50, 0., 5., 50, 0., 5.);
   
   TH1D* hYRecoAll = new TH1D("hYRecoAll", "Reconstructed y all match;y;counts", 80., 1., 5.4);
   TH1D* hYGenRecoAll = new TH1D("hYGenRecoAll", "Generated y all match;y;counts", 80., 1., 5.4);
@@ -250,7 +251,7 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
   TH2F *hResDistXY = new TH2F("hResDistXY", ";d_{xygen}-d_{xyrec} (cm);#it{p}_{T} (GeV/#it{c});counts", 100, -0.1, 0.1, 30, 0, 3);
   TH1D *hNevents = new TH1D("hNevents", ";;counts", 1, 0, 1);
   
-  THnSparseF *hsp = CreateSparse(nbody);
+  THnSparseF *hsp = CreateSparse(mass, nbody);
   const Int_t nDim=static_cast<const Int_t>(hsp->GetNdimensions());
   Double_t arrsp[nDim];
 
@@ -273,7 +274,7 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
   //if decay daughter is unstable read the pdg code of its daughters
   int pdg_dau2[2] = {0,0};
   if(nbody == 3)
-    GetPDGDaughters(pdg_unstable_dau,pdg_dau2,matter);
+    GetPDGDaughters(pdg_unstable_dau,pdg_dau2,pdg_unstable_dau > 0);
 
   Double_t massPos = TDatabasePDG::Instance()->GetParticle(pdg_dau[0])->Mass();
   Double_t massNeg = TDatabasePDG::Instance()->GetParticle(pdg_dau[1])->Mass();
@@ -303,8 +304,8 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
       fDecayer->Decay(pdgParticle, mom);
       np = fDecayer->ImportParticles(particles);
     } while (np < 0);
-    Double_t ptDau[3];
-    Double_t yDau[3];
+    Double_t ptau[3];
+    Double_t yau[3];
     Double_t secvertgen[3][3];
     Int_t pdgDaughter[3];
     // loop on decay products
@@ -322,11 +323,11 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
         //printf("mother part = %d, code=%d, pt=%f, y=%f \n", i, kf, iparticle1->Pt(), iparticle1->Y());
       }
       //check if the particle is one of the final decay products
-      bool IsDecayDaughter = pdg_dau[0] == kf || pdg_dau[1] == kf;
+      bool IsDecayaughter = pdg_dau[0] == kf || pdg_dau[1] == kf;
       if(nbody == 3)
-        IsDecayDaughter = IsDecayDaughter || pdg_dau2[0] == kf || pdg_dau2[1] == kf;
+        IsDecayaughter = IsDecayaughter || pdg_dau2[0] == kf || pdg_dau2[1] == kf;
       bool IsStable = kf != pdg_unstable_dau;
-      if (IsDecayDaughter && IsStable){
+      if (IsDecayaughter && IsStable){
         // daughters that can be reconstructed: K and pi
         Double_t e = iparticle1->Energy();
         Double_t px = iparticle1->Px();
@@ -344,8 +345,8 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
         nfake += trw->GetNFakeITSHits();
         trw->GetPXYZ(pxyz);
 
-        ptDau[nrec] = iparticle1->Pt();
-        yDau[nrec] = iparticle1->Y();
+        ptau[nrec] = iparticle1->Pt();
+        yau[nrec] = iparticle1->Y();
         secvertgen[0][nrec] = iparticle1->Vx();
         secvertgen[1][nrec] = iparticle1->Vy();
         secvertgen[2][nrec] = iparticle1->Vz();
@@ -354,17 +355,17 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
         if(nbody == 2)
         {
           daurecswapmass[0].SetXYZM(pxyz[0], pxyz[1], pxyz[2],(iparticle1->GetMass() == massPos)? massNeg : massPos);
-          hptDau[(crg == 1)? 0 : 1]->Fill(ptGen,ptDau[nrec]);
-          hyDau[(crg == 1)? 0 : 1]->Fill(yDau[nrec]);
+          hptau[(crg == 1)? 0 : 1]->Fill(ptGen,ptau[nrec]);
+          hyau[(crg == 1)? 0 : 1]->Fill(yau[nrec]);
         }
         else{
           if((pdg_dau[0] == kf || pdg_dau[1] == kf) && nrec==0){
-            hptDau[(crg == 1)? 0 : 1]->Fill(ptGen,ptDau[nrec]);
-            hyDau[(crg == 1)? 0 : 1]->Fill(yDau[nrec]);
+            hptau[(crg == 1)? 0 : 1]->Fill(ptGen,ptau[nrec]);
+            hyau[(crg == 1)? 0 : 1]->Fill(yau[nrec]);
           }
           else{
-            hptDau[(kf == pdg_dau2[0])? 1 : 2]->Fill(ptGen,ptDau[nrec]);
-            hyDau[(kf == pdg_dau2[0])? 1 : 2]->Fill(yDau[nrec]);
+            hptau[(kf == pdg_dau2[0])? 1 : 2]->Fill(ptGen,ptau[nrec]);
+            hyau[(kf == pdg_dau2[0])? 1 : 2]->Fill(yau[nrec]);
           }
         }
         recProbe[nrec] = *trw;
@@ -411,7 +412,7 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
     Float_t dca = 0, dca12 = 0, dca13 = 0, dca23 = 0;
     Double_t xP, yP, zP, sigmaVert, cts = 0;
     if(nbody == 2){
-      if (ptDau[0] > 0 && ptDau[1] > 0) hyDau2D->Fill(yDau[0], yDau[1]);
+      if (ptau[0] > 0 && ptau[1] > 0) hyau2D->Fill(yau[0], yau[1]);
       parentrefl = daurecswapmass[0];
       parentrefl += daurecswapmass[1];
       Double_t  massRecReflD=parentrefl.M();
@@ -430,7 +431,7 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
       hDCAz->Fill(d3, ptRec);
 
       ComputeVertex(recProbe[0],recProbe[1],xP,yP,zP);
-      cts = CosThetaStar(parent,daurec[0],pdgParticle,311,311);
+      cts = CosThetaStar(parent,daurec[0],pdgParticle,pdg_dau[0],pdg_dau[1]);
     }
     else{
       ComputeVertex(recProbe[0],recProbe[1],recProbe[2],vprim[2],xP,yP,zP,sigmaVert);
@@ -508,7 +509,8 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
 
     Double_t d0x[3];
     Double_t d0y[3];
-    Double_t d0xy[3];
+    Double_t d0xy[3] = {10000,10000,10000};
+    Double_t ptdau[3] = {10000,10000,10000};
 
     for(int i = 0; i < nbody; i++){
       recProbe[0].PropagateToZBxByBz(0);
@@ -521,19 +523,20 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
         hd0XY[i]->Fill(d0xy[i], ptRec);
       // printf("d0xy1 = %f, d0xy2 = %f \n", d0xy1, d0xy2);
       //hd0XYprod->Fill(d0xy1 * d0xy2, ptRec);
+      ptdau[i] = recProbe[i].GetTrack()->Pt();
+
     }
       
     arrsp[0] = massRec;
     arrsp[1] = ptRec;
     arrsp[2] = yRec;
-    arrsp[3] = dist;
+    arrsp[3] = mass*dist/ptRec;
     arrsp[4] = cosp;
-    arrsp[5] = TMath::Min(TMath::Min(TMath::Abs(d0xy[0]),TMath::Abs(d0xy[1])),TMath::Abs(d0xy[2]));
-    arrsp[6] = (nbody == 2) ? d0xy[0] * d0xy[1] : sigmaVert;
+    arrsp[5] = TMath::Min(TMath::Min(ptdau[0],ptdau[1]),ptdau[2]);
+    arrsp[6] = TMath::Min(TMath::Min(TMath::Abs(d0xy[0]),TMath::Abs(d0xy[1])),TMath::Abs(d0xy[2]));
     arrsp[7] = (nbody == 2) ? dca : (dca12+dca13+dca23)/3.;
-    arrsp[8] = TMath::Min(recProbe[0].GetTrack()->Pt(),recProbe[1].GetTrack()->Pt());
-    arrsp[9] = TMath::Abs(ipD);	    
-    arrsp[10] = (nbody == 2) ? cts : sigmaVert;      
+    arrsp[8] = TMath::Abs(ipD);	    
+    arrsp[9] = (nbody == 2) ? cts : sigmaVert;      
     hsp->Fill(arrsp);
     
     if (ntcand){
@@ -627,23 +630,23 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
   hPtGen->Write();
   hYGen->Write();
   if(nbody == 2){
-    hptDau[0]->SetName("hptDauPos");
-    hyDau[0]->SetName("hyDauPos");
-    hptDau[1]->SetName("hptDauNeg");
-    hyDau[1]->SetName("hyDauNeg");
-    hyDau2D->Write();
+    hptau[0]->SetName("hptauPos");
+    hyau[0]->SetName("hyauPos");
+    hptau[1]->SetName("hptauNeg");
+    hyau[1]->SetName("hyauNeg");
+    hyau2D->Write();
   }
   else{
-    hptDau[0]->SetName(Form("hptDau_%i",(pdg_dau[0] == pdg_unstable_dau) ? pdg_dau[1] : pdg_dau[0]));
-    hyDau[0]->SetName(Form("hyDau_%i",(pdg_dau[0] == pdg_unstable_dau) ? pdg_dau[1] : pdg_dau[0]));
-    hptDau[1]->SetName(Form("hptDau2_%i",pdg_dau2[0]));
-    hyDau[1]->SetName(Form("hyDau2_%i",pdg_dau2[0]));
-    hptDau[2]->SetName(Form("hptDau2%i",pdg_dau2[1]));
-    hyDau[2]->SetName(Form("hyDau2_%i",pdg_dau2[1]));
+    hptau[0]->SetName(Form("hptau_%i",(pdg_dau[0] == pdg_unstable_dau) ? pdg_dau[1] : pdg_dau[0]));
+    hyau[0]->SetName(Form("hyau_%i",(pdg_dau[0] == pdg_unstable_dau) ? pdg_dau[1] : pdg_dau[0]));
+    hptau[1]->SetName(Form("hptau2_%i",pdg_dau2[0]));
+    hyau[1]->SetName(Form("hyau2_%i",pdg_dau2[0]));
+    hptau[2]->SetName(Form("hptau2%i",pdg_dau2[1]));
+    hyau[2]->SetName(Form("hyau2_%i",pdg_dau2[1]));
   }
   for(int i = 0; i < nbody; i++){
-    hptDau[i]->Write();
-    hyDau[i]->Write();
+    hptau[i]->Write();
+    hyau[i]->Write();
   }
   fout2.Close();
   fout->Close();
@@ -658,9 +661,7 @@ void MakeCombinBkgCandidates3Body(const char* trackTreeFile="treeBkgEvents.root"
 			       Int_t writeNtuple = kFALSE,
 			       Bool_t usePID=kFALSE,
              int pdgMother = 3334,
-             int pdgDaughter1 = 211,
-             int pdgDaughter2 = 211,
-             int pdgDaughter3 = -211){
+             int pdg_unstable_dau = 3122){
 
   // Read the TTree of tracks produced with runBkgVT.C
   // Create combinatorial background candidates (= OS pairs of tracks)
@@ -717,7 +718,9 @@ void MakeCombinBkgCandidates3Body(const char* trackTreeFile="treeBkgEvents.root"
   TH1D *hcandpeak = new TH1D("hcandpeak", "", 500, 0, 15000000);
   TH1D *hNevents = new TH1D("hNevents", "", 1, 0, 1);
   
-  THnSparseF *hsp = CreateSparse(3);
+  // define mother particle mass
+  Double_t mass = TDatabasePDG::Instance()->GetParticle(pdgMother)->Mass();
+  THnSparseF *hsp = CreateSparse(mass, 3);
   const Int_t nDim=static_cast<const Int_t>(hsp->GetNdimensions());
   Double_t arrsp[nDim];
 
@@ -729,11 +732,17 @@ void MakeCombinBkgCandidates3Body(const char* trackTreeFile="treeBkgEvents.root"
     ntcand = new TNtuple("ntcand", "ntcand", "mass:pt:dist:cosp:d01:d02:d0prod:dca:ptMin:ptMax:massKK", 32000);
   }
 
-  // define mother particle
-  Double_t mass = TDatabasePDG::Instance()->GetParticle(pdgMother)->Mass();
-
+  //read the pdg code of the daughters
+  int pdg_dau[2] = {0,0};
+  GetPDGDaughters(pdgMother, pdg_dau, pdgMother>0);
+  //read the pdg code of the unstable daughter daughters
+  int pdg_dau2[2] = {0,0};
+  GetPDGDaughters(pdg_unstable_dau, pdg_dau2, pdg_unstable_dau > 0);
+  int pdgDaughter1 = (pdg_dau[0] == pdg_unstable_dau) ? pdg_dau[0] : pdg_dau[1];
+  int pdgDaughter2 = pdg_dau2[0];
+  int pdgDaughter3 = pdg_dau2[1];
   KMCProbeFwd recProbe[3];
-  TLorentzVector parent, kkpair, daurec[3];
+  TLorentzVector parent, pair13, daurec[3];
 
   for (Int_t iev = 0; iev < nevents; iev++){
     hNevents->Fill(0.5);
@@ -769,13 +778,6 @@ void MakeCombinBkgCandidates3Body(const char* trackTreeFile="treeBkgEvents.root"
         Double_t d0y2 = recProbe[1].GetY();
         Double_t d0xy2 = TMath::Sqrt(d0x2 * d0x2 + d0y2 * d0y2);
         if (d0x2 < 0) d0xy2 *= -1;
-        // recProbe[0].PropagateToDCA(&recProbe[1]);
-        // Float_t d1 = recProbe[1].GetX() - recProbe[0].GetX();
-        // Float_t d2 = recProbe[1].GetY() - recProbe[0].GetY();
-        // Float_t d3 = recProbe[1].GetZ() - recProbe[0].GetZ();
-        // Float_t dca01 = sqrt(d1 * d1 + d2 * d2 + d3 * d3);
-        // recProbe[0].PropagateToZBxByBz(vprim[2]);
-        // recProbe[1].PropagateToZBxByBz(vprim[2]);
 
         for (Int_t itr3 = itr2+1; itr3 < arrentr; itr3++){
           if(itr3==itr) continue;
@@ -804,8 +806,8 @@ void MakeCombinBkgCandidates3Body(const char* trackTreeFile="treeBkgEvents.root"
               mom1=recProbe[2].GetTrack()->P();
               mom2=recProbe[1].GetTrack()->P();
               mom3=recProbe[0].GetTrack()->P();
-              kkpair = daurec[1];
-              kkpair += daurec[0];
+              pair13 = daurec[1];
+              pair13 += daurec[0];
             }else{
               daurec[0].SetXYZM(pxyz0[0], pxyz0[1], pxyz0[2], TDatabasePDG::Instance()->GetParticle(pdgDaughter3)->Mass());
               daurec[1].SetXYZM(pxyz1[0], pxyz1[1], pxyz1[2], TDatabasePDG::Instance()->GetParticle(pdgDaughter2)->Mass());
@@ -813,25 +815,25 @@ void MakeCombinBkgCandidates3Body(const char* trackTreeFile="treeBkgEvents.root"
               mom1=recProbe[0].GetTrack()->P();
               mom2=recProbe[1].GetTrack()->P();
               mom3=recProbe[2].GetTrack()->P();
-              kkpair = daurec[1];
-              kkpair += daurec[2];
+              pair13 = daurec[1];
+              pair13 += daurec[2];
             }
             parent = daurec[0];
             parent += daurec[1];
             parent += daurec[2];
           
             countCand++;
-            Float_t ptD=parent.Pt();
-            Float_t invMassD=parent.M();
-            Float_t yD = 0.5 * TMath::Log((parent.E() + parent.Pz()) / (parent.E() - parent.Pz()));
-            Double_t  massRecKK=kkpair.M();
-            hYPtRecoAll->Fill(yD, ptD);
-            hPtRecoAll->Fill(ptD);
-            hMassAll->Fill(invMassD);
-            hMassKK->Fill(massRecKK);
-            if(invMassD>1.6  && invMassD<2.1){
+            Float_t pt=parent.Pt();
+            Float_t invMass=parent.M();
+            Float_t y = 0.5 * TMath::Log((parent.E() + parent.Pz()) / (parent.E() - parent.Pz()));
+            Double_t  massRec13=pair13.M();
+            hYPtRecoAll->Fill(y, pt);
+            hPtRecoAll->Fill(pt);
+            hMassAll->Fill(invMass);
+            hMassKK->Fill(massRec13);
+            if(invMass>mass*0.5  && invMass<mass*1.5){
                     // range to fill histos
-              if(TMath::Abs(invMassD-mass)<0.06) countCandInPeak++;
+              if(TMath::Abs(invMass-mass)<0.06) countCandInPeak++;
               hMomPion->Fill(mom1);
               hMomKaon->Fill(mom2);
               hMomKaon->Fill(mom3);
@@ -845,30 +847,48 @@ void MakeCombinBkgCandidates3Body(const char* trackTreeFile="treeBkgEvents.root"
               Double_t vsec[3] = {xV, yV, zV};
               Double_t cosp = CosPointingAngle(vprim, vsec, parent);
               Double_t ipD = ImpParXY(vprim, vsec, parent);
-              hCosp->Fill(cosp, ptD);
+              hCosp->Fill(cosp, pt);
               //printf(" ***** ***** cos point = %f \n", cosp);	    
-              hDistXY->Fill(distXY, ptD);
-              hDistZ->Fill(zV, ptD);
-              hDist->Fill(dist, ptD);
-              hd0XY1->Fill(d0xy1, ptD);
-              hd0XY2->Fill(d0xy2, ptD);
-              hd0XY3->Fill(d0xy3, ptD);
-              arrsp[0] = invMassD;
-              arrsp[1] = ptD;
-              arrsp[2] = dist;
-              arrsp[3] = distXY;
-              arrsp[4] = distZ;
-              arrsp[5] = cosp;
-              arrsp[6] = TMath::Min(TMath::Abs(d0xy1),TMath::Min(TMath::Abs(d0xy2),TMath::Abs(d0xy3)));
-              arrsp[7] = sigmaVert;//TMath::Max(TMath::Abs(dca01),TMath::Max(TMath::Abs(dca12),TMath::Abs(dca02)));
-              arrsp[8] = TMath::Min(recProbe[0].GetTrack()->Pt(),recProbe[1].GetTrack()->Pt());
-              arrsp[9] = TMath::Abs(ipD);	    
-              arrsp[10] = massRecKK;
+              hDistXY->Fill(distXY, pt);
+              hDistZ->Fill(zV, pt);
+              hDist->Fill(dist, pt);
+              hd0XY1->Fill(d0xy1, pt);
+              hd0XY2->Fill(d0xy2, pt);
+              hd0XY3->Fill(d0xy3, pt);
+
+              recProbe[0].PropagateToDCA(&recProbe[1]);
+              recProbe[0].PropagateToDCA(&recProbe[2]);
+              recProbe[1].PropagateToDCA(&recProbe[2]);
+
+              Float_t dca12,dca13,dca23;
+              Float_t d1 = recProbe[1].GetX() - recProbe[0].GetX();
+              Float_t d2 = recProbe[1].GetY() - recProbe[0].GetY();
+              Float_t d3 = recProbe[1].GetZ() - recProbe[0].GetZ();
+              dca12 = sqrt(d1 * d1 + d2 * d2 + d3 * d3);
+              d1 = recProbe[2].GetX() - recProbe[0].GetX();
+              d2 = recProbe[2].GetY() - recProbe[0].GetY();
+              d3 = recProbe[2].GetZ() - recProbe[0].GetZ();
+              dca13 = sqrt(d1 * d1 + d2 * d2 + d3 * d3);
+              d1 = recProbe[2].GetX() - recProbe[1].GetX();
+              d2 = recProbe[2].GetY() - recProbe[1].GetY();
+              d3 = recProbe[2].GetZ() - recProbe[1].GetZ();
+              dca23 = sqrt(d1 * d1 + d2 * d2 + d3 * d3);
+
+              arrsp[0] = invMass;
+              arrsp[1] = pt;
+              arrsp[2] = y;
+              arrsp[3] = mass*dist/parent.P();
+              arrsp[4] = cosp;
+              arrsp[5] = TMath::Min(TMath::Min(recProbe[0].GetTrack()->Pt(),recProbe[1].GetTrack()->Pt()),recProbe[2].GetTrack()->Pt());
+              arrsp[6] = TMath::Min(TMath::Min(TMath::Abs(d0xy1),TMath::Abs(d0xy2)),TMath::Abs(d0xy3));
+              arrsp[7] = (dca12+dca13+dca23)/3.;
+              arrsp[8] = TMath::Abs(ipD);	    
+              arrsp[9] = sigmaVert;      
               hsp->Fill(arrsp);
-	      
+
               if (ntcand){
-                arrnt[0] = invMassD;
-                arrnt[1] = ptD;
+                arrnt[0] = invMass;
+                arrnt[1] = pt;
                 arrnt[2] = dist;
                 arrnt[3] = cosp;
                 arrnt[4] = d0xy1;
@@ -877,7 +897,7 @@ void MakeCombinBkgCandidates3Body(const char* trackTreeFile="treeBkgEvents.root"
                 arrnt[7] = sigmaVert;//TMath::Max(TMath::Abs(dca01),TMath::Max(TMath::Abs(dca12),TMath::Abs(dca02)));
                 arrnt[8] = TMath::Min(recProbe[0].GetTrack()->Pt(),recProbe[1].GetTrack()->Pt());
                 arrnt[9] = TMath::Max(recProbe[0].GetTrack()->Pt(),recProbe[1].GetTrack()->Pt());
-                arrnt[10] = massRecKK;
+                arrnt[10] = massRec13;
                 ntcand->Fill(arrnt);
               }
             } // check on inv mass
@@ -976,7 +996,8 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFile="treeBkgEvents.root"
   TH1D *hcandpeak = new TH1D("hcandpeak", "", 500, 0, 15000);
   TH1D *hNevents = new TH1D("hNevents", "", 1, 0, 1);
     
-  THnSparseF *hsp = CreateSparse(2);
+  Double_t massM = TDatabasePDG::Instance()->GetParticle(pdgMother)->Mass();
+  THnSparseF *hsp = CreateSparse(massM, 2);
   const Int_t nDim=static_cast<const Int_t>(hsp->GetNdimensions());
   Double_t arrsp[nDim];
 
@@ -990,7 +1011,6 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFile="treeBkgEvents.root"
 
   KMCProbeFwd recProbe[2];
   TLorentzVector parent, daurec[2];
-  Double_t massM = TDatabasePDG::Instance()->GetParticle(pdgMother)->Mass();
   for (Int_t iev = 0; iev < nevents; iev++){
     hNevents->Fill(0.5);
     Double_t vprim[3] = {0, 0, 0};
@@ -1035,25 +1055,25 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFile="treeBkgEvents.root"
           parent = daurec[0];
           parent += daurec[1];
           countCand++;
-          Float_t ptD=parent.Pt();
-          Float_t invMassD=parent.M();
-          Float_t yD = 0.5 * TMath::Log((parent.E() + parent.Pz()) / (parent.E() - parent.Pz()));
-          hYPtRecoAll->Fill(yD, ptD);
-          hPtRecoAll->Fill(ptD);
-          hMassAll->Fill(invMassD);
-          if(invMassD>0.5*massM  && invMassD<1.5*massM){
+          Float_t pt=parent.Pt();
+          Float_t invMass=parent.M();
+          Float_t y = 0.5 * TMath::Log((parent.E() + parent.Pz()) / (parent.E() - parent.Pz()));
+          hYPtRecoAll->Fill(y, pt);
+          hPtRecoAll->Fill(pt);
+          hMassAll->Fill(invMass);
+          if(invMass>0.5*massM  && invMass<1.5*massM){
             // range to fill histos
-            if(invMassD>0.8*massM && invMassD<1.2*massM) countCandInPeak++;
+            if(invMass>0.8*massM && invMass<1.2*massM) countCandInPeak++;
             Float_t d1 = recProbe[1].GetX() - recProbe[0].GetX();
             Float_t d2 = recProbe[1].GetY() - recProbe[0].GetY();
             Float_t d3 = recProbe[1].GetZ() - recProbe[0].GetZ();
             Float_t dca = sqrt(d1 * d1 + d2 * d2 + d3 * d3);
             
             //printf(" DCA = %f\n", sqrt(d1 * d1 + d2 * d2 + d3 * d3));
-            hDCA->Fill(dca, ptD);
-            hDCAx->Fill(d1, ptD);
-            hDCAy->Fill(d2, ptD);
-            hDCAz->Fill(d3, ptD);
+            hDCA->Fill(dca, pt);
+            hDCAx->Fill(d1, pt);
+            hDCAy->Fill(d2, pt);
+            hDCAz->Fill(d3, pt);
             Double_t xP, yP, zP;
             ComputeVertex(recProbe[0],recProbe[1],xP,yP,zP);
             Float_t dist = TMath::Sqrt(xP * xP + yP * yP + zP * zP);
@@ -1062,11 +1082,11 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFile="treeBkgEvents.root"
             Double_t cosp = CosPointingAngle(vprim, vsec, parent);
             Double_t cts = CosThetaStar(parent,daurec[iNeg],pdgMother,pdg_dau[0],pdg_dau[1]);
             Double_t ipD = ImpParXY(vprim, vsec, parent);
-            hCosp->Fill(cosp, ptD);
-            hCosThStVsMass->Fill(invMassD,cts);
+            hCosp->Fill(cosp, pt);
+            hCosThStVsMass->Fill(invMass,cts);
             //printf(" ***** ***** cos point = %f \n", cosp);	    
-            hDistXY->Fill(distXY, ptD);
-            hDist->Fill(dist, ptD);
+            hDistXY->Fill(distXY, pt);
+            hDist->Fill(dist, pt);
             
             recProbe[0].PropagateToZBxByBz(0);
             Double_t d0x1 = recProbe[0].GetX();
@@ -1082,26 +1102,26 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFile="treeBkgEvents.root"
               
             //printf("d0xy1 = %f, d0xy2 = %f \n", d0xy1, d0xy2);
             
-            ////hd0XYprod->Fill(d0xy1 * d0xy2, ptD);
-            hd0XY1->Fill(d0xy1, ptD);
-            hd0XY2->Fill(d0xy2, ptD);
-            arrsp[0] = invMassD;
-            arrsp[1] = ptD;
-            arrsp[2] = yD;
-            arrsp[3] = dist;
+            ////hd0XYprod->Fill(d0xy1 * d0xy2, pt);
+            hd0XY1->Fill(d0xy1, pt);
+            hd0XY2->Fill(d0xy2, pt);
+            
+            arrsp[0] = invMass;
+            arrsp[1] = pt;
+            arrsp[2] = y;
+            arrsp[3] = dist*massM*parent.P(),
             arrsp[4] = cosp;
-            arrsp[5] = TMath::Min(TMath::Abs(d0xy1),TMath::Abs(d0xy2));
-            arrsp[6] = d0xy1 * d0xy2;
+            arrsp[5] = TMath::Min(recProbe[0].GetTrack()->Pt(),recProbe[1].GetTrack()->Pt());
+            arrsp[6] = TMath::Min(TMath::Abs(d0xy1),TMath::Abs(d0xy2));
             arrsp[7] = dca;
-            arrsp[8] = TMath::Min(recProbe[0].GetTrack()->Pt(),recProbe[1].GetTrack()->Pt());
-            arrsp[9] = TMath::Abs(ipD);	    
-            arrsp[10] = cts;
+            arrsp[8] = TMath::Abs(ipD);	    
+            arrsp[9] = cts;
             hsp->Fill(arrsp);
             
             if (ntcand){
-              arrnt[0] = invMassD;
-              arrnt[1] = ptD;
-              arrnt[2] = yD;
+              arrnt[0] = invMass;
+              arrnt[1] = pt;
+              arrnt[2] = y;
               arrnt[3] = dist*massM*parent.P();
               arrnt[4] = cosp;
               arrnt[5] = d0xy1;
@@ -1154,10 +1174,10 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFile="treeBkgEvents.root"
 Double_t CosThetaStar(TLorentzVector &parent, TLorentzVector &dauk, int pdgMother, int pdgDaughterPos, int pdgDaughterNeg) {
 
   Double_t massMoth = TDatabasePDG::Instance()->GetParticle(pdgMother)->Mass();
-  Double_t massK = TDatabasePDG::Instance()->GetParticle(pdgDaughterPos)->Mass();
-  Double_t massPi = TDatabasePDG::Instance()->GetParticle(pdgDaughterNeg)->Mass();
+  Double_t massPos = TDatabasePDG::Instance()->GetParticle(pdgDaughterPos)->Mass();
+  Double_t massNeg = TDatabasePDG::Instance()->GetParticle(pdgDaughterNeg)->Mass();
 
-  Double_t pStar = TMath::Sqrt((massMoth*massMoth-massK*massK-massPi*massPi)*(massMoth*massMoth-massK*massK-massPi*massPi)-4.*massK*massK*massPi*massPi)/(2.*massMoth);
+  Double_t pStar = TMath::Sqrt((massMoth*massMoth-massPos*massPos-massNeg*massNeg)*(massMoth*massMoth-massPos*massPos-massNeg*massNeg)-4.*massPos*massPos*massNeg*massNeg)/(2.*massMoth);
 
   Double_t pMoth=parent.P();
   Double_t e=TMath::Sqrt(massMoth*massMoth+pMoth*pMoth);
@@ -1166,41 +1186,46 @@ Double_t CosThetaStar(TLorentzVector &parent, TLorentzVector &dauk, int pdgMothe
   TVector3 momDau(dauk.Px(),dauk.Py(),dauk.Pz());
   TVector3 momMoth(parent.Px(),parent.Py(),parent.Pz());
   Double_t qlProng=momDau.Dot(momMoth)/momMoth.Mag();
-  Double_t cts = (qlProng/gamma-beta*TMath::Sqrt(pStar*pStar+massK*massK))/pStar;
+  Double_t cts = (qlProng/gamma-beta*TMath::Sqrt(pStar*pStar+massPos*massPos))/pStar;
 
   return cts;
 }
 
-THnSparseF* CreateSparse(Int_t nbody = 2){
-  const Int_t nAxes=11;
+THnSparseF* CreateSparse(Double_t mass, Int_t nbody = 2){
+  const Int_t nAxes=10;
   THnSparseF *hsp;
-  if(nbody == 2){
-    TString axTit[nAxes]={"Inv. mass (GeV/c^{2})","p_{T} (GeV/c)",
-        "Dec Len (cm)","DecLenXY (cm)","DecLenZ (cm)",
-        "cos(#vartheta_{p})",
-        "d_0^{min} (cm)",
-        "sigmaVert",
-        "p_{T}^{min} (GeV/c)",
-        "d_0^{D} (cm)",
-        "massKK (GeV/c2)"};
-    Int_t bins[nAxes] =   {100,  5,  30,  10,   30,  20,   12,   12,    8,   8, 20}; 
-    Double_t min[nAxes] = {2.0,  0., 0.,  0.,   0.,  0.98, 0.,   0.0,   0.,  0., 0.95};
-    Double_t max[nAxes] = {2.5,  5., 0.3, 0.05, 0.3, 1.,   0.03, 0.03,  4.,  0.04, 1.15};  
+  if(nbody == 3){
+    TString axTit[nAxes]={"Inv. mass (GeV/c^{2})",
+                          "#it{p}_{T} (GeV/c)",
+                          "y",
+                          "ct (cm)",
+                          "cos(#vartheta_{p})",
+                          "#it{p}_{T}^{min} (GeV/c)",
+                          "d_0^{min} (cm)",
+                          "#bar{DCA} (cm)",
+                          "b (cm)",
+                          "sigmaVert (cm)"};
+    Int_t bins[nAxes] =   {100,            10,     40,  30,   15,  10,    8,   12,   16,  10}; 
+    Double_t min[nAxes] = {0.5*mass,  ptminSG, yminSG,  0., 0.98,  0., 0.00, 0.00, 0.00,  0.};
+    Double_t max[nAxes] = {1.5*mass,  ptmaxSG, ymaxSG, 30., 1.00,  10., 0.05, 0.03, 0.04,  2.};  
     hsp = new THnSparseF("hsp", "hsp", nAxes, bins, min, max);
     for(Int_t iax=0; iax<nAxes; iax++)
       hsp->GetAxis(iax)->SetTitle(axTit[iax].Data());
   }
   else{
-    const Int_t nAxes=11;
-    TString axTit[nAxes]={"Inv. mass (GeV/c^{2})","#it{p}_{T} (GeV/c)","y",
-        "Dec Len (cm)","cos(#vartheta_{p})",
-        "d_0^{min} (cm)",
-        "d_0*d_0 (cm^{2})","DCA",
-        "#it{p}_{T}^{min} (GeV/c)",
-        "d_0^{D} (cm)","cos(#theta*)"};
-    Int_t bins[nAxes] =   {100,   5,  40, 30,  20,   10,   10,      12,      8,  16,  10}; 
-    Double_t min[nAxes] = {1.65,  0., 1., 0., 0.98, 0.,   -0.0006, 0.0,   0.,  0.,  -1.};
-    Double_t max[nAxes] = {2.15,  5., 5., 0.3, 1.,   0.05, 0.,      0.03,  4.,  0.04, 1.};  
+    TString axTit[nAxes]={"Inv. mass (GeV/c^{2})",
+                          "#it{p}_{T} (GeV/c)",
+                          "y",
+                          "ct (cm)",
+                          "cos(#vartheta_{p})",
+                          "#it{p}_{T}^{min} (GeV/c)",
+                          "d_0^{min} (cm)",
+                          "DCA (dca)",
+                          "b (cm)",
+                          "cos(#theta*)"};
+    Int_t bins[nAxes] =   {100,            10,     40,  30,   15,  10,    8,   12,   16,  20}; 
+    Double_t min[nAxes] = {0.5*mass,  ptminSG, yminSG,  0., 0.98,  0., 0.00, 0.00, 0.00, -1.};
+    Double_t max[nAxes] = {1.5*mass,  ptmaxSG, ymaxSG, 30., 1.00,  10., 0.05, 0.03, 0.04,  1.};  
     hsp = new THnSparseF("hsp", "hsp", nAxes, bins, min, max);
     for(Int_t iax=0; iax<nAxes; iax++)
       hsp->GetAxis(iax)->SetTitle(axTit[iax].Data());
