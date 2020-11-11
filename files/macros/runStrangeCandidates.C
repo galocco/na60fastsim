@@ -530,7 +530,7 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
     arrsp[0] = massRec;
     arrsp[1] = ptRec;
     arrsp[2] = yRec;
-    arrsp[3] = mass*dist/ptRec;
+    arrsp[3] = mass*dist/parent.P();
     arrsp[4] = cosp;
     arrsp[5] = TMath::Min(TMath::Min(ptdau[0],ptdau[1]),ptdau[2]);
     arrsp[6] = TMath::Min(TMath::Min(TMath::Abs(d0xy[0]),TMath::Abs(d0xy[1])),TMath::Abs(d0xy[2]));
@@ -543,15 +543,14 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
       arrnt[0] = massRec;
       arrnt[1] = ptRec;
       arrnt[2] = yRec;
-      arrnt[3] = mass*dist/ptRec;
+      arrnt[3] = mass*dist/parent.P();
       arrnt[4] = cosp;
       arrnt[5] = d0xy[0];
       arrnt[6] = d0xy[1];
       arrnt[7] = (nbody == 2) ? d0xy[0] * d0xy[1] : sigmaVert;
       if(nbody == 2){
-      arrnt[8] = TMath::Min(recProbe[0].GetTrack()->Pt(),recProbe[1].GetTrack()->Pt());
-      arrnt[9] = TMath::Max(recProbe[0].GetTrack()->Pt(),recProbe[1].GetTrack()->Pt());
-      
+        arrnt[8] = TMath::Min(recProbe[0].GetTrack()->Pt(),recProbe[1].GetTrack()->Pt());
+        arrnt[9] = TMath::Max(recProbe[0].GetTrack()->Pt(),recProbe[1].GetTrack()->Pt());
         arrnt[10] = dca; 
       }
       else{
@@ -726,10 +725,10 @@ void MakeCombinBkgCandidates3Body(const char* trackTreeFile="treeBkgEvents.root"
 
   TFile *fnt = 0x0;
   TNtuple *ntcand = 0x0;
-  Float_t arrnt[11];
+  Float_t arrnt[13];
   if (writeNtuple){
     fnt = new TFile(Form("fntBkg%s.root",suffix.Data()), "recreate");
-    ntcand = new TNtuple("ntcand", "ntcand", "mass:pt:dist:cosp:d01:d02:d0prod:dca:ptMin:ptMax:massKK", 32000);
+    ntcand = new TNtuple("ntcand", "ntcand", "mass:pt:y:ct:cosp:d01:d02:sigmavert:ptMin:ptMax:dca12:dca13:dca23", 32000);
   }
 
   //read the pdg code of the daughters
@@ -889,15 +888,18 @@ void MakeCombinBkgCandidates3Body(const char* trackTreeFile="treeBkgEvents.root"
               if (ntcand){
                 arrnt[0] = invMass;
                 arrnt[1] = pt;
-                arrnt[2] = dist;
-                arrnt[3] = cosp;
-                arrnt[4] = d0xy1;
-                arrnt[5] = d0xy2;
-                arrnt[6] = d0xy1 * d0xy2;
-                arrnt[7] = sigmaVert;//TMath::Max(TMath::Abs(dca01),TMath::Max(TMath::Abs(dca12),TMath::Abs(dca02)));
-                arrnt[8] = TMath::Min(recProbe[0].GetTrack()->Pt(),recProbe[1].GetTrack()->Pt());
-                arrnt[9] = TMath::Max(recProbe[0].GetTrack()->Pt(),recProbe[1].GetTrack()->Pt());
-                arrnt[10] = massRec13;
+                arrnt[2] = y;
+                arrnt[3] = mass*dist/parent.P();
+                arrnt[4] = cosp;
+                arrnt[5] = d0xy1;
+                arrnt[6] = d0xy2;
+                arrnt[7] = sigmaVert;
+                arrnt[8] = TMath::Min(TMath::Min(recProbe[0].GetTrack()->Pt(),recProbe[1].GetTrack()->Pt()),recProbe[2].GetTrack()->Pt());
+                arrnt[9] = TMath::Max(TMath::Max(recProbe[0].GetTrack()->Pt(),recProbe[1].GetTrack()->Pt()),recProbe[2].GetTrack()->Pt());
+                arrnt[10] = dca12;
+                arrnt[11] = dca13;
+                arrnt[12] = dca23;
+                
                 ntcand->Fill(arrnt);
               }
             } // check on inv mass
