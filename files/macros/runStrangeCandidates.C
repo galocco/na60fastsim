@@ -39,7 +39,7 @@ double yminSG = -10.;
 double ymaxSG = 10.;
 // pT range
 double ptminSG = 0.;
-double ptmaxSG = 10; 
+double ptmaxSG = 3.; 
 
 double vX = 0, vY = 0, vZ = 0; // event vertex
 
@@ -53,17 +53,18 @@ const int NEnergy = 5;
 const int NParticles = 5;
 //array of the energy
 double Elab[NEnergy] = {20,30,40,80,158};
-//T parameter in the exponential pT distribution [matter/antimatter][particle][beam energy]
+
+//T parameter in the exponential pT distribution [matter/antimatter][particle][beam energy] i
 //                                                    phi                        K               Lambda                Omega                    Csi
-double Tslope[2][NParticles][NEnergy] = {{{196.8,237.4,244.6,239.8,298.7},{0,0,232,230,232},{244,249,258,265,301},{0,0,218,0,267},{221,233,222,227,277}},//matter
+double Tslope[2][NParticles][NEnergy] = {{{196.8,237.4,244.6,239.8,298.7},{0,0,228.9, 223.1, 228.9},{244,249,258,265,301},{0,0,218,0,267},{221,233,222,227,277}},//matter
                                          {{196.8,237.4,244.6,239.8,298.7},{0,0,226,217,226},{339,284,301,292,303},{0,0,218,0,259},{311,277,255,321,0}}};//antimatter
 //sigma parameter of the gaussians of the rapidity distribution [matter/antimatter][particle][beam energy]
 //                                                          phi                        K                       Lambda                Omega                    Csi
-double sigma_rapidity[2][NParticles][NEnergy] = {{{0.425,0.538,0.696,0.658,1.451},{0,0,0.725,0.792,0.88},{0.51,0.66,0.91,0.87,0},{0,0,0.6,0,1.2},{0.45,0.56,0.76,0.71,1.18}},//matter
-                                                 {{0.425,0.538,0.696,0.658,1.451},{0,0,0.635,0.705,0.81},{0,0,0.71,0.85,0.95},{0,0,0.6,0,1.0},{0,0,0,0,0}}};//antimatter
+double sigma_rapidity[2][NParticles][NEnergy] = {{{0.425,0.538,0.696,0.658,1.451},{0,0,0.674, 0.743, 0.84},{0.51,0.66,0.91,0.87,0},{0,0,0.6,0,1.2},{0.45,0.56,0.76,0.71,1.18}},//matter
+                                                 {{0.425,0.538,0.696,0.658,1.451},{0,0,0,0,0},{0,0,0.71,0.85,0.95},{0,0,0.6,0,1.0},{0,0,0,0,0}}};//antimatter
 //mu paramter of the gaussian of the rapidity distribution [matter/antimatter][particle][beam energy]
 //                                                       phi                        K                   Lambda                   Omega                    Csi
-double y0_rapidity[2][NParticles][NEnergy] = {{{0.425,0.538,0.487,0.682,0.},{0,0,0.694,0.742,0.839},{0.49,0.59,0.65,0.94,0},{0,0,0,0,0},{0.45,0.47,0.54,0.68,0}},//matter
+double y0_rapidity[2][NParticles][NEnergy] = {{{0.425,0.538,0.487,0.682,0.},{0,0,0.619, 0.701, 0.775},{0.49,0.59,0.65,0.94,0},{0,0,0,0,0},{0.45,0.47,0.54,0.68,0}},//matter
                                               {{0.425,0.538,0.487,0.682,0.},{0,0,0.569,0.668,0.727},{0,0,0,0,0},{0,0,0.0,0},{0,0,0,0,0}}};//antimatter
 //multiplicity for event [matter/antimatter][particle][beam energy]
 //                                                       phi                        K                   Lambda                   Omega                    Csi
@@ -86,12 +87,12 @@ void GetPDGDaughters(int pdgParticle,int pdgDaughters[], bool matter);
 
 void GenerateSignalCandidates(Int_t nevents = 10000, 
 				double Eint = 158, 
-        TString suffix = "_K0s",
+        TString suffix = "_phi",
 				const char *setup = "../setups/setup-EHN1_BetheBloch.txt",
-				const char *privateDecayTable = "../decaytables/USERTABK0.DEC",
+				const char *privateDecayTable = "../decaytables/USERTABPHI.DEC",
 				bool writeNtuple = kTRUE, 
 				bool simulateBg=kTRUE,
-        int pdgParticle = 310,
+        int pdgParticle = 333,
         int nbody = 2,
         int pdg_unstable_dau = 0,
         bool matter = true){
@@ -107,11 +108,10 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
   
   //define the pT and rapidity probability function
   Double_t mass = TDatabasePDG::Instance()->GetParticle(pdgParticle)->Mass();
-  TF1 *fpt = new TF1("fpt","x*expo(-TMath::Sqrt(x**2+[0]**2)/[1])",ptminSG,ptmaxSG);
+  TF1 *fpt = new TF1("fpt","x*exp(-TMath::Sqrt(x**2+[0]**2)/[1])",ptminSG,ptmaxSG);
   fpt->SetParameter(0,mass);
-  fpt->SetParameter(1,GetTslope(pdgParticle,Eint,matter));
+  fpt->SetParameter(1,GetTslope(pdgParticle,Eint,matter)/1000);
   TF1 *fy = new TF1("fy","exp(-0.5*((x-[0])/[1])**2)+exp(-0.5*((x+[0])/[1])**2) ",yminSG,ymaxSG);
-  std::cout<<GetY0Rapidity(pdgParticle,Eint,matter)<<std::endl;
   fy->SetParameter(0,GetY0Rapidity(pdgParticle,Eint,matter));
   fy->SetParameter(1,GetSigmaRapidity(pdgParticle,Eint,matter));
   int count1=0,count2=0,count3=0;
@@ -203,7 +203,7 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
   TH2F* hptau[3];
   TH1D* hyau[3];
   for(int i = 0; i < nbody; i++){
-    hptau[i] = new TH2F(Form("hptdau%i",i), " ;#it{p}_{T} (GeV/#it{c});#it{p}_{TM} (GeV/#it{c});counts", 50,0.,10.,50, 0., 10.);
+    hptau[i] = new TH2F(Form("hptdau%i",i), " ;#it{p}_{T} (GeV/#it{c});#it{p}_{TM} (GeV/#it{c});counts", 50,ptminSG, 3,50,ptminSG, ptmaxSG);
     hyau[i] = new TH1D(Form("hydau%i",i), ";y_{};counts", 50, 0., 5.);
   }
   TH2F *hyau2D = new TH2F("hydau2D", "y negative daughter vs y positive daughter;y_{-};y_{+};counts", 50, 0., 5., 50, 0., 5.);
@@ -219,10 +219,18 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
 
   TH2F *hDistXY = new TH2F("hDistXY", ";d_{xy} (cm);#it{p}_{T} (GeV/#it{c});counts", 100, 0, 0.1, 30, 0, 3);
   TH2F *hDist = new TH2F("hDist", ";d (cm);#it{p}_{T} (GeV/#it{c});counts", 300, 0, 10, 30, 0, 3);
-  TH1D *hDistx = new TH1D("hDistx", ";x (cm);counts", 100, 0, 100);
-  TH1D *hDisty = new TH1D("hDisty", ";y (cm);counts", 100, 0, 100);
-  TH1D *hDistz = new TH1D("hDistz", ";z (cm);counts", 200, 0, 200);
-  TH1D *hDistTot = new TH1D("hDistTot", ";d (cm);counts", 200, 0, 200);
+  TH1D *hDistx = new TH1D("hDistx", "generated secondary vertex x;x (cm);counts", 100, 0, 30);
+  TH1D *hDisty = new TH1D("hDisty", "generated secondary vertex y;y (cm);counts", 100, 0, 30);
+  TH1D *hDistxy = new TH1D("hDistxy", "generated secondary vertex d_{xy};d_{xy} (cm);counts", 100, 0, 30);
+  TH1D *hDistz = new TH1D("hDistz", "generated secondary vertex z;z (cm);counts", 200, 0, 200);
+  TH1D *hDistTot = new TH1D("hDistTot", "generated secondary vertex distance;d (cm);counts", 200, 0, 200);
+
+  TH1D *hDistxRec = new TH1D("hDistxRec", "reconstructed secondary vertex x;x (cm);counts", 30, 0, 1.5);
+  TH1D *hDistyRec = new TH1D("hDistyRec", "reconstructed secondary vertex y;y (cm);counts", 30, 0, 1.5);
+  TH1D *hDistxyRec = new TH1D("hDistxyRec", "reconstructed secondary vertex d_{xy};d_{xy} (cm);counts", 20, 0, 1);
+  TH1D *hDistzRec = new TH1D("hDistzRec", "reconstructed secondary vertex z;z (cm);counts", 30, 0, 15);
+  TH1D *hDistTotRec = new TH1D("hDistTotRec", "reconstructed secondary vertex distance;d (cm);counts", 30, 0, 15);
+
   TH1D *hCtz = new TH1D("hctz", ";ctz (cm);counts", 100, 0, 100);
   TH2F *hDistgenXY = new TH2F("hDistgenXY", ";d_{genxy} (cm);#it{p}_{T} (GeV/#it{c});counts", 100, 0, 0.1, 30, 0, 3);
   TH2F *hDistgen = new TH2F("hDistgen", ";d_{gen} (cm);#it{p}_{T} (GeV/#it{c});counts", 300, 0, 10, 30, 0, 3);
@@ -243,13 +251,13 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
   TH2F *hMassReflVsPt = new TH2F("hMassReflVsPt", ";m (GeV/#it{c}^{2});#it{p}_{T} (GeV/#it{c});counts", 200, 0.5*mass, 1.5*mass, 6, 0, 3);
   TH2F *hMassReflVsY = new TH2F("hMassReflVsY", ";m (GeV/#it{c}^{2});y;counts", 200, 0.5*mass, 1.5*mass, 10, 0, 5);
   
-  TH2F *hResVx = new TH2F("hResVx", ";V_{xgen}-V_{xrec} (cm);#it{p}_{T} (GeV/#it{c});counts", 200, -1000., 1000., 20, 0, 10);
-  TH2F *hResVy = new TH2F("hResVy", ";V_{ygen}-V_{yrec} (cm);#it{p}_{T} (GeV/#it{c});counts", 200, -1000., 1000., 20, 0, 10);
-  TH2F *hResVz = new TH2F("hResVz", ";V_{zgen}-V_{zrec} (cm);#it{p}_{T} (GeV/#it{c});counts", 200, -1000., 1000., 20, 0, 10);
-  TH2F *hResPx = new TH2F("hResPx", ";#it{p}_{xgen}-#it{p}_{xrec} (GeV/#it{c});#it{p}_{T} (GeV/#it{c});counts", 100, -1, 1, 20, 0, 10);
-  TH2F *hResPy = new TH2F("hResPy", ";#it{p}_{ygen}-#it{p}_{yrec} (GeV/#it{c});#it{p}_{T} (GeV/#it{c});counts", 100, -1, 1, 20, 0, 10);
-  TH2F *hResPz = new TH2F("hResPz", ";#it{p}_{zgen}-#it{p}_{zrec} (GeV/#it{c});#it{p}_{T} (GeV/#it{c});counts", 100, -1, 1, 20, 0, 10);
-  TH2F *hResPt = new TH2F("hResPt", ";#it{p}_{Tgen}-#it{p}_{Trec} (GeV/#it{c});#it{p}_{T} (GeV/#it{c});counts", 100, -1, 1, 20, 0, 10);
+  TH2F *hResVx = new TH2F("hResVx", ";V_{xgen}-V_{xrec} (cm);#it{p}_{T} (GeV/#it{c});counts", 200, -1000., 1000., 30, ptminSG, ptmaxSG);
+  TH2F *hResVy = new TH2F("hResVy", ";V_{ygen}-V_{yrec} (cm);#it{p}_{T} (GeV/#it{c});counts", 200, -1000., 1000., 30, ptminSG, ptmaxSG);
+  TH2F *hResVz = new TH2F("hResVz", ";V_{zgen}-V_{zrec} (cm);#it{p}_{T} (GeV/#it{c});counts", 200, -1000., 1000., 30, ptminSG, ptmaxSG);
+  TH2F *hResPx = new TH2F("hResPx", ";#it{p}_{xgen}-#it{p}_{xrec} (GeV/#it{c});#it{p}_{T} (GeV/#it{c});counts", 100, -1, 1, 30, ptminSG, ptmaxSG);
+  TH2F *hResPy = new TH2F("hResPy", ";#it{p}_{ygen}-#it{p}_{yrec} (GeV/#it{c});#it{p}_{T} (GeV/#it{c});counts", 100, -1, 1, 30, ptminSG, ptmaxSG);
+  TH2F *hResPz = new TH2F("hResPz", ";#it{p}_{zgen}-#it{p}_{zrec} (GeV/#it{c});#it{p}_{T} (GeV/#it{c});counts", 100, -1, 1, 30, ptminSG, ptmaxSG);
+  TH2F *hResPt = new TH2F("hResPt", ";#it{p}_{Tgen}-#it{p}_{Trec} (GeV/#it{c});#it{p}_{T} (GeV/#it{c});counts", 100, -1, 1, 30, ptminSG, ptmaxSG);
   TH2F *hResVxVsY = new TH2F("hResVxVsY", ";V_{xgen}-V_{xrec} (cm);y;counts", 200, -1000., 1000., 50, 0, 5);
   TH2F *hResVyVsY = new TH2F("hResVyVsY", ";V_{ygen}-V_{yrec} (cm);y;counts", 200, -1000., 1000., 50, 0, 5);
   TH2F *hResVzVsY = new TH2F("hResVzVsY", ";V_{zgen}-V_{zrec} (cm);y;counts", 200, -1000., 1000., 50, 0, 5);
@@ -267,9 +275,11 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
 
   TFile *fnt = 0x0;
   TNtuple *ntcand = 0x0;
+  TNtuple *ntgen = 0x0;
   if (writeNtuple)
   {
-    fnt = new TFile(Form("fntSig%s.root",suffix.Data()), "recreate");    
+    fnt = new TFile(Form("fntSig%s.root",suffix.Data()), "recreate");
+    ntgen = new TNtuple("ntgen", "ntgen", "pt:y", 32000); 
     if(nbody == 2)
       ntcand = new TNtuple("ntcand", "ntcand", "mass:pt:y:dist:cosp:d01:d02:d0prod:ptMin:ptMax:dca", 32000);
     else
@@ -277,6 +287,7 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
   }
 
   Float_t* arrnt = new Float_t[(nbody == 2) ? 11 : 13];
+  Float_t arrntgen[2];
   double y0 = GetY0(Eint);
   //read the pdg code of the daughters
   int pdg_dau[2] = {0,0};
@@ -303,6 +314,12 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
     Double_t phi = gRandom->Rndm() * 2 * TMath::Pi();
     Double_t pxGen = ptGen * TMath::Cos(phi);
     Double_t pyGen = ptGen * TMath::Sin(phi);
+
+    if (ntgen){
+      arrntgen[0] = ptGen;
+      arrntgen[1] = yGen;
+      ntgen->Fill(arrntgen);
+    }
     
     Double_t mt = TMath::Sqrt(ptGen * ptGen + mass * mass);
     Double_t pzGen = mt * TMath::SinH(yGen);
@@ -347,6 +364,7 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
           hDistx->Fill(vX);
           hDisty->Fill(vY);
           hDistz->Fill(vZ);
+          hDistxy->Fill(TMath::Sqrt(vX*vX+vY*vY));
           hDistTot->Fill(TMath::Sqrt(vX*vX+vY*vY+vZ*vZ));
           hCtz->Fill(vZ*mass/iparticle1->P());
         }
@@ -382,16 +400,16 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
         if(nbody == 2)
         {
           daurecswapmass[0].SetXYZM(pxyz[0], pxyz[1], pxyz[2],(iparticle1->GetMass() == massPos)? massNeg : massPos);
-          hptau[(crg == 1)? 0 : 1]->Fill(ptGen,ptau[nrec]);
+          hptau[(crg == 1)? 0 : 1]->Fill(ptau[nrec],ptGen);
           hyau[(crg == 1)? 0 : 1]->Fill(yau[nrec]);
         }
         else{
           if((pdg_dau[0] == kf || pdg_dau[1] == kf) && nrec==0){
-            hptau[(crg == 1)? 0 : 1]->Fill(ptGen,ptau[nrec]);
+            hptau[(crg == 1)? 0 : 1]->Fill(ptau[nrec],ptGen);
             hyau[(crg == 1)? 0 : 1]->Fill(yau[nrec]);
           }
           else{
-            hptau[(kf == pdg_dau2[0])? 1 : 2]->Fill(ptGen,ptau[nrec]);
+            hptau[(kf == pdg_dau2[0])? 1 : 2]->Fill(ptau[nrec],ptGen);
             hyau[(kf == pdg_dau2[0])? 1 : 2]->Fill(yau[nrec]);
           }
         }
@@ -533,6 +551,11 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
     
     hDistXY->Fill(distXY, ptRec);
     hDist->Fill(dist, ptRec);
+    hDistxRec->Fill(xP);
+    hDistyRec->Fill(yP);
+    hDistxyRec->Fill(TMath::Sqrt(xP*xP+yP*yP));
+    hDistzRec->Fill(zP);
+    hDistTotRec->Fill(dist);
     hDistgenXY->Fill(distgenXY, ptRec);
     hDistgen->Fill(distgen, ptRec);
       
@@ -570,7 +593,7 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
     arrsp[8] = TMath::Abs(ipD);	    
     arrsp[9] = (nbody == 2) ? cts : sigmaVert;      
     hsp->Fill(arrsp);
-    
+
     if (ntcand){
       arrnt[0] = massRec;
       arrnt[1] = ptRec;
@@ -645,8 +668,14 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
   hDistXY->Write();
   hDistx->Write();
   hDisty->Write();
+  hDistxy->Write();
   hDistz->Write();
   hDistTot->Write();
+  hDistxRec->Write();
+  hDistyRec->Write();
+  hDistxyRec->Write();
+  hDistzRec->Write();
+  hDistTotRec->Write();
   hCtz->Write();
   hDist->Write();
   hDistgenXY->Write();
@@ -676,6 +705,7 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
   if (ntcand){
     fnt->cd();
     ntcand->Write();
+    ntgen->Write();
     fnt->Close();
   }
   
