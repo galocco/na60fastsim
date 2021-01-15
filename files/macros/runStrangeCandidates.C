@@ -89,10 +89,10 @@ double GetY0(double Eint);
 void GetPDGDaughters(int pdgParticle,int pdgDaughters[], bool matter);
 Double_t KFVertexer(AliExternalTrackParam kTrack [], Double_t kMasses[], int n_dau, float bz);
 Double_t O2Vertexer(AliExternalTrackParam kTrack[], Double_t kMasses[], int n_dau, float bz);
-void GenerateSignalCandidates(Int_t nevents = 1000000, 
+void GenerateSignalCandidates(Int_t nevents = 100000, 
 				double Eint = 158, 
         TString suffix = "_K0s",
-				const char *setup = "../setups/setup-EHN1_BetheBloch.txt",
+				const char *setup = "../setups/setup_short_5pixel_1.5T.txt",
 				const char *privateDecayTable = "../decaytables/USERTABK0.DEC",
 				bool writeNtuple = kTRUE, 
 				bool simulateBg=kFALSE,
@@ -1108,7 +1108,7 @@ void MakeCombinBkgCandidates3Body(const char* trackTreeFile="treeBkgEvents.root"
   }
 }
 
-void MakeCombinBkgCandidates2Body(const char* trackTreeFile="treeBkgEvents.root",
+void MakeCombinBkgCandidates2Body(const char* trackTreeFile="treeBkgEvents_layer5.root",
              TString suffix = "_K0s",
 			       Int_t nevents = 999999, 
 			       Int_t writeNtuple = kTRUE,
