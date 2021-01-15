@@ -625,29 +625,36 @@ Bool_t KMCDetectorFwd::PropagateToZBxByBz(KMCProbeFwd* trc,double z,double maxDZ
   // even id's correspond to Z between the field regions, odd ones - inside
   int ib0 = GetFieldReg(curZ); // field region id of start point
   int ib1 = GetFieldReg(z);    // field region id of last point
+  //if (curZ==0 || z==0)
+    //printf("ib1: %d ib0: %d \n",ib1,ib0);
+
   int nzst = 0;
   //  AliInfo(Form("FldRegID: %d %d (%f : %f)",ib0,ib1, curZ,z));
   if (ib1>ib0) { // fwd propagation with field boundaries crossing
     for (int ib=ib0;ib<ib1;ib++) {
       if ( ib&0x1 ) { // we are in the odd (field ON) region, go till the end of field reg.
-	//	printf("Here00 | %d %f\n",ib>>1,fFldZMaxs[ib>>1]);
-	fZSteps[nzst++] = fFldZMaxs[ib>>1] + fgkFldEps;
+        //	printf("Here00 | %d %f\n",ib>>1,fFldZMaxs[ib>>1]);
+        fZSteps[nzst++] = fFldZMaxs[ib>>1] + fgkFldEps;
+        //printf("fZSteps[%d] = %d + %d \n",nzst,fFldZMaxs[ib>>1],fgkFldEps);
       }
       else { // we are in even (field free) region, go till the beginning of next field reg.
-	//	printf("Here01 | %d %f\n",ib>>1,fFldZMins[ib>>1]);
-	fZSteps[nzst++] = fFldZMins[ib>>1] + fgkFldEps;
+        //	printf("Here01 | %d %f\n",ib>>1,fFldZMins[ib>>1]);
+        fZSteps[nzst++] = fFldZMins[ib>>1] + fgkFldEps;
+        //printf("fZSteps[%d] = %d + %d \n",nzst,fFldZMins[ib>>1],fgkFldEps);
       }
     }
   }
   else if (ib1<ib0) { // bwd propagation
     for (int ib=ib0;ib>ib1;ib--) {
       if ( ib&0x1 ) { // we are in the odd (field ON) region, go till the beginning of field reg.
-	//	printf("Here10 | %d %f\n",(ib-1)>>1,fFldZMins[(ib-1)>>1]);
-	fZSteps[nzst++] = fFldZMins[(ib-1)>>1] - fgkFldEps;
+        //	printf("Here10 | %d %f\n",(ib-1)>>1,fFldZMins[(ib-1)>>1]);
+        fZSteps[nzst++] = fFldZMins[(ib-1)>>1] - fgkFldEps;
+        //printf("fZSteps[%d] = %d . %d \n",nzst,fFldZMins[ib>>1],fgkFldEps);
       }
       else { // we are in even (field free) region, go till the beginning of next field reg.
-	//	printf("Here11 | %d %f\n",(ib-1)>>1,fFldZMaxs[(ib-1)>>1]);
-	fZSteps[nzst++] = fFldZMaxs[(ib-1)>>1] - fgkFldEps;
+        //	printf("Here11 | %d %f\n",(ib-1)>>1,fFldZMaxs[(ib-1)>>1]);
+        fZSteps[nzst++] = fFldZMaxs[(ib-1)>>1] - fgkFldEps;
+        //printf("fZSteps[%d] = %d - %d \n",nzst,fFldZMaxs[ib>>1],fgkFldEps);
       }
     } 
   }
@@ -688,28 +695,28 @@ Int_t KMCDetectorFwd::PropagateToLayer(KMCProbeFwd* trc, KMCLayerFwd* lrFrom, KM
       //
       dstZ = lrFrom->GetZ()+0.5*dir*lrFrom->GetThickness(); // go till the end of starting layer applying corrections
       if (dir==1 && trc->GetZ()<=fZDecay && dstZ>fZDecay) { // need to perform or to apply decay
-	double frac = (fZDecay-trc->GetZ())/lrFrom->GetThickness();
-	// account for the difference between real BB and ETP param eloss
-        
-	double corrELoss = lrFrom->GetELoss2ETP(trc->GetP(), trc->GetMass() );
+        double frac = (fZDecay-trc->GetZ())/lrFrom->GetThickness();
+        // account for the difference between real BB and ETP param eloss
+              
+        double corrELoss = lrFrom->GetELoss2ETP(trc->GetP(), trc->GetMass() );
         float x2x0=0,xrho=0;
         lrFrom->getMatBudget(trc->GetX(),trc->GetY(), x2x0, xrho);
         if (fIntegrateMSX2X0) trc->addMSMaterialsSeen(x2x0);
-	if (!PropagateToZBxByBz(trc,fZDecay, fDefStepMat, frac*x2x0, -frac*xrho*corrELoss, modeMC)) return 0;
-	PerformDecay(trc);
-	frac = 1.-frac;
-	corrELoss = lrFrom->GetELoss2ETP(trc->GetP(), trc->GetMass() );
+        if (!PropagateToZBxByBz(trc,fZDecay, fDefStepMat, frac*x2x0, -frac*xrho*corrELoss, modeMC)) return 0;
+        PerformDecay(trc);
+        frac = 1.-frac;
+        corrELoss = lrFrom->GetELoss2ETP(trc->GetP(), trc->GetMass() );
         lrFrom->getMatBudget(trc->GetX(),trc->GetY(), x2x0, xrho);
         if (fIntegrateMSX2X0) trc->addMSMaterialsSeen(x2x0);
-	if (!PropagateToZBxByBz(trc,dstZ, fDefStepMat, frac*x2x0, -frac*xrho*corrELoss, modeMC)) return 0;
+	      if (!PropagateToZBxByBz(trc,dstZ, fDefStepMat, frac*x2x0, -frac*xrho*corrELoss, modeMC)) return 0;
       }
       else {
-	// account for the difference between real BB and ETP param eloss
-	double corrELoss = lrFrom->GetELoss2ETP(trc->GetP(), trc->GetMass() );
+        // account for the difference between real BB and ETP param eloss
+        double corrELoss = lrFrom->GetELoss2ETP(trc->GetP(), trc->GetMass() );
         float x2x0=0,xrho=0;
         lrFrom->getMatBudget(trc->GetX(),trc->GetY(), x2x0, xrho);
         if (fIntegrateMSX2X0) trc->addMSMaterialsSeen(x2x0);
-	if (!PropagateToZBxByBz(trc,dstZ, fDefStepMat, x2x0, -dir*xrho*corrELoss, modeMC)) return 0;
+	      if (!PropagateToZBxByBz(trc,dstZ, fDefStepMat, x2x0, -dir*xrho*corrELoss, modeMC)) return 0;
       }
     }
   }
@@ -771,8 +778,8 @@ Bool_t KMCDetectorFwd::SolveSingleTrackViaKalman(double pt, double yrap, double 
       //      printf("Before update on %d : ",j); currTr->Print("etp");
       KMCClusterFwd* cl = lrP->GetCorCluster();
       if (!cl->IsKilled()) {
-	if (!UpdateTrack(currTr,lrP,cl))  return kFALSE;
-	nupd++;
+        if (!UpdateTrack(currTr,lrP,cl))  return kFALSE;
+        nupd++;
       }
       //      printf("After update on %d (%+e %+e) : ",j, lrP->GetXRes(),lrP->GetYRes()); currTr->Print("etp");
 
@@ -790,9 +797,34 @@ Bool_t KMCDetectorFwd::SolveSingleTrackViaKalman(double pt, double yrap, double 
     if (lrt->IsMS())   if (!lrt->GetCorCluster()->IsKilled()) nhMS++;
     if (lrt->IsITS())  if (!lrt->GetCorCluster()->IsKilled()) nhITS++;
   }
-  //  printf("ITS: %d MS: %d TR: %d\n",nhITS,nhMS,nhTR);
+  //printf("ITS: %d MS: %d TR: %d\n",nhITS,nhMS,nhTR);
+  fHhitITS->Fill(nhITS);
+  fHhitITSvsX->Fill(x,nhITS);
+  fHhitITSvsY->Fill(y,nhITS);
+  fHhitITSvsZ->Fill(z,nhITS);
+  fHhitITSvsPt->Fill(fMPt,nhITS);
+  float mt = TMath::Sqrt(pt*pt+mass*mass);
+  float pz = mt * TMath::SinH(yrap);
+  float theta = TMath::ACos(pt/TMath::Sqrt(pt*pt+pz*pz));
+  float thet = TMath::ASin(1/TMath::Sqrt(1+(fMM/fMPt)*(fMM/fMPt)*TMath::SinH(fMY)*TMath::SinH(fMY)));
+  float ymod = TMath::ACosH(theta/mt);
+  fHhitITSvsYRap->Fill(fMY,nhITS);
+  fHhitITSvsTheta->Fill(thet,nhITS);
+  if(fCounter>0){
+    fHhitITSSum->Fill(nhITS+fOldHit);
+    fHhitITSvsXSum->Fill(x,nhITS+fOldHit);
+    fHhitITSvsYSum->Fill(y,nhITS+fOldHit);
+    fHhitITSvsZSum->Fill(z,nhITS+fOldHit);
+    fHhitITSvsYRapSum->Fill(fMY,nhITS+fOldHit);
+    fHhitITSvsPtSum->Fill(fMPt,nhITS+fOldHit);
+    fHhitITSvsThetaSum->Fill(thet,nhITS+fOldHit);
+  }
+  else 
+    fOldHit = nhITS;
+  fCounter*=-1;
   if (nhTR<fMinTRHits) return kFALSE;
   if (nhMS<fMinMSHits) return kFALSE;
+  //if (nhITS<fMinITSHits) return kFALSE;
   //
   return kTRUE;
 }
@@ -911,6 +943,7 @@ Bool_t KMCDetectorFwd::SolveSingleTrackViaKalmanMC(int offset)
     fRefVtx[0] = fProbe.GetTrack()->GetY();
     fRefVtx[1] = fProbe.GetTrack()->GetZ();
     fRefVtx[2] = fProbe.GetTrack()->GetX();
+    //printf("%f -- %f -- %f",fProbe.GetTrack()->GetY(),fProbe.GetTrack()->GetZ(),fProbe.GetTrack()->GetX());
   }
   //
   //printf("MaxLr: %d\n",maxLr);
@@ -947,7 +980,8 @@ Bool_t KMCDetectorFwd::SolveSingleTrackViaKalmanMC(int offset)
     //
     //    printf("Lr:%d %s IsDead:%d\n",j, lrP->GetName(),lrP->IsDead());
     if (lrP->IsDead()) { // for passive layer just propagate the copy of all tracks of prev layer >>>
-      for (int itrP=ntPrev;itrP--;) { // loop over all tracks from previous layer
+      for (int itrP=ntPrev;itrP--;) { // loop over all tracks from previous 
+      //printf("layer = %d track = %d\n", j, ntPrev);
 	currTrP = lrP->GetMCTrack(itrP); 
 	if (currTrP->IsKilled()) continue;
 	currTr = lr->AddMCTrack( currTrP );
@@ -963,6 +997,7 @@ Bool_t KMCDetectorFwd::SolveSingleTrackViaKalmanMC(int offset)
     if (lrP->IsMS() || lrP->IsTrig()) { // we don't consider bg hits in MS, just update with MC cluster
       KMCClusterFwd* clmc = lrP->GetMCCluster();
       for (int itrP=ntPrev;itrP--;) { // loop over all tracks from previous layer
+      std::cout<<ntPrev<<"\n";
 	currTrP = lrP->GetMCTrack(itrP); if (currTrP->IsKilled()) continue;
 	//	printf("At lr %d  | ",j+1); currTrP->Print("etp");
 	currTr = lr->AddMCTrack( currTrP );
@@ -995,68 +1030,85 @@ Bool_t KMCDetectorFwd::SolveSingleTrackViaKalmanMC(int offset)
       currTrP = lrP->GetMCTrack(itrP); if (currTrP->IsKilled()) continue;
       //
       if (checkMS) {
-	checkMS = kFALSE;
-	// check if muon track is well defined
-	if (currTrP->GetNTRHits()<fMinTRHits) {currTrP->Kill(); continue;}
-	if (currTrP->GetNMSHits()<fMinMSHits) {currTrP->Kill(); continue;}
-	//
-	//	printf("Check %d of %d at lr%d Nhits:%d NTR:%d NMS:%d\n",
-	//       itrP,ntPrev,j, currTrP->GetNHits(),currTrP->GetNTRHits(),currTrP->GetNMSHits());
+        checkMS = kFALSE;
+        // check if muon track is well defined
+        if (currTrP->GetNTRHits()<fMinTRHits) {currTrP->Kill(); continue;}
+        if (currTrP->GetNMSHits()<fMinMSHits) {currTrP->Kill(); continue;}
+        //
+        //	printf("Check %d of %d at lr%d Nhits:%d NTR:%d NMS:%d\n",
+        //       itrP,ntPrev,j, currTrP->GetNHits(),currTrP->GetNTRHits(),currTrP->GetNMSHits());
+        if (fHChi2MS) fHChi2MS->Fill(currTr->GetChi2(),currTr->GetNHits());      
 	if (fHChi2MS) fHChi2MS->Fill(currTr->GetChi2(),currTr->GetNHits());      
+        if (fHChi2MS) fHChi2MS->Fill(currTr->GetChi2(),currTr->GetNHits());      
+	if (fHChi2MS) fHChi2MS->Fill(currTr->GetChi2(),currTr->GetNHits());      
+        if (fHChi2MS) fHChi2MS->Fill(currTr->GetChi2(),currTr->GetNHits());      
+	if (fHChi2MS) fHChi2MS->Fill(currTr->GetChi2(),currTr->GetNHits());      
+        if (fHChi2MS) fHChi2MS->Fill(currTr->GetChi2(),currTr->GetNHits());      
+	if (fHChi2MS) fHChi2MS->Fill(currTr->GetChi2(),currTr->GetNHits());      
+        if (fHChi2MS) fHChi2MS->Fill(currTr->GetChi2(),currTr->GetNHits());      
       }
       //
       // Are we entering to the last ITS layer? Apply Branson plane correction if requested
+      /*
       if (lrP->GetID() == fLastActiveLayerITS && fVtx && !fVtx->IsDead() && fApplyBransonPCorrection>=0) {
-	//	printf("%e -> %e (%d %d) | %e\n",lrP->GetZ(),lr->GetZ(), lrP->GetID(),j, currTr->GetZ());
+        //	printf("%e -> %e (%d %d) | %e\n",lrP->GetZ(),lr->GetZ(), lrP->GetID(),j, currTr->GetZ());
 
-	trcConstr = *currTrP;
-	fMuTrackLastITS = trcConstr;
-	if (!PropagateToLayer(&trcConstr,lrP,fVtx,-1))  {currTrP->Kill();continue;} // propagate to vertex
-	//////	trcConstr.ResetCovariance();
-	// update with vertex point + eventual additional error
-	float origErrX = fVtx->GetYRes(), origErrY = fVtx->GetXRes(); // !!! Ylab<->Ytracking, Xlab<->Ztracking
-	KMCClusterFwd* clv = fVtx->GetMCCluster();
-	double measCV[2] = {clv->GetY(),clv->GetZ()}, errCV[3] = {
-	  origErrX*origErrX+fApplyBransonPCorrection*fApplyBransonPCorrection,
-	  0.,
-	  origErrY*origErrY+fApplyBransonPCorrection*fApplyBransonPCorrection
+        trcConstr = *currTrP;
+        fMuTrackLastITS = trcConstr;
+        if (!PropagateToLayer(&trcConstr,lrP,fVtx,-1))  {currTrP->Kill();continue;} // propagate to vertex
+        //////	trcConstr.ResetCovariance();
+        // update with vertex point + eventual additional error
+        float origErrX = fVtx->GetYRes(), origErrY = fVtx->GetXRes(); // !!! Ylab<->Ytracking, Xlab<->Ztracking
+        KMCClusterFwd* clv = fVtx->GetMCCluster();
+        double measCV[2] = {clv->GetY(),clv->GetZ()}, errCV[3] = {
+            origErrX*origErrX+fApplyBransonPCorrection*fApplyBransonPCorrection,
+            0.,
+            origErrY*origErrY+fApplyBransonPCorrection*fApplyBransonPCorrection
+          };  
 	};
-	fChi2MuVtx = trcConstr.GetPredictedChi2(measCV,errCV);
-	if (fHChi2Branson) fHChi2Branson->Fill(fChi2MuVtx);
-	//	printf("UpdVtx: {%+e %+e}/{%e %e %e}\n",measCV[0],measCV[1],errCV[0],errCV[1],errCV[2]);
-	//	printf("Muon@Vtx:  "); trcConstr.Print("etp");
+          };  
+	};
+          };  
+	};
+          };  
+	};
+          };  
+        fChi2MuVtx = trcConstr.GetPredictedChi2(measCV,errCV);
+        if (fHChi2Branson) fHChi2Branson->Fill(fChi2MuVtx);
+        //	printf("UpdVtx: {%+e %+e}/{%e %e %e}\n",measCV[0],measCV[1],errCV[0],errCV[1],errCV[2]);
+        //	printf("Muon@Vtx:  "); trcConstr.Print("etp");
 
-	fMuTrackVertex = trcConstr;
-	if (!trcConstr.Update(measCV,errCV)) {currTrP->Kill();continue;}
-	//	printf("Truth@VTX: "); fProbe.Print("etp");
-	//	printf("Constraint@VTX: "); trcConstr.Print("etp");
-	fMuTrackBCVertex = trcConstr;
-	fMuTrackBCVertex.SetUniqueID(0);
+        fMuTrackVertex = trcConstr;
+        if (!trcConstr.Update(measCV,errCV)) {currTrP->Kill();continue;}
+        //	printf("Truth@VTX: "); fProbe.Print("etp");
+        //	printf("Constraint@VTX: "); trcConstr.Print("etp");
+        fMuTrackBCVertex = trcConstr;
+	      fMuTrackBCVertex.SetUniqueID(0);
+  
 	
-	
-	if (!PropagateToLayer(&trcConstr,fVtx,lrP,1)) {currTrP->Kill();continue;}
-	// constrain Muon Track
-	//	printf("Constraint: "); trcConstr.Print("etp");
+        if (!PropagateToLayer(&trcConstr,fVtx,lrP,1)) {currTrP->Kill();continue;}
+        // constrain Muon Track
+        //	printf("Constraint: "); trcConstr.Print("etp");
 
-	//////	double measCM[2] = {trcConstr.GetYLoc(), trcConstr.GetZLoc()}, errCM[3] = {
-	//////	  trcConstr.GetSigmaY2(),trcConstr.GetSigmaXY(),trcConstr.GetSigmaX2()
-	//////	};
+        //////	double measCM[2] = {trcConstr.GetYLoc(), trcConstr.GetZLoc()}, errCM[3] = {
+        //////	  trcConstr.GetSigmaY2(),trcConstr.GetSigmaXY(),trcConstr.GetSigmaX2()
+        //////	};
 
-	//////	printf("UpdMuon: {%+e %+e}/{%e %e %e}\n",measCM[0],measCM[1],errCM[0],errCM[1],errCM[2]);
-	//////	printf("Before constraint: "); currTrP->Print("etp");
-	//////	if (!currTrP->Update(measCM,errCM)) {currTrP->Kill();continue;}
-	fMuTrackBCLastITS = trcConstr;
-	fMuTrackBCLastITS.SetUniqueID(0);
-	(*currTrP->GetTrack()) = *trcConstr.GetTrack(); // override with constraint
-	//	printf("After  constraint: "); currTrP->Print("etp");
-	//	printf("MuTruth "); lrP->GetAnProbe()->Print("etp");
+        //////	printf("UpdMuon: {%+e %+e}/{%e %e %e}\n",measCM[0],measCM[1],errCM[0],errCM[1],errCM[2]);
+        //////	printf("Before constraint: "); currTrP->Print("etp");
+        //////	if (!currTrP->Update(measCM,errCM)) {currTrP->Kill();continue;}
+        fMuTrackBCLastITS = trcConstr;
+        fMuTrackBCLastITS.SetUniqueID(0);
+        (*currTrP->GetTrack()) = *trcConstr.GetTrack(); // override with constraint
+        //	printf("After  constraint: "); currTrP->Print("etp");
+        //	printf("MuTruth "); lrP->GetAnProbe()->Print("etp");
       }
-      
+      */
       currTr = lr->AddMCTrack( currTrP );
       
       if (fst<fstLim) {
-	fst++;
-	currTr->Print("etp");
+        fst++;
+        currTr->Print("etp");
       }
       //
       AliDebug(2,Form("LastChecked before:%d",currTr->GetInnerLayerChecked()));
@@ -1094,6 +1146,7 @@ Bool_t KMCDetectorFwd::SolveSingleTrackViaKalmanMC(int offset)
   } // end loop over layers    
   //
   // do we use vertex constraint?
+  
   if (fVtx && !fVtx->IsDead() && fIncludeVertex) {
     printf("Apply vertex constraint\n");
     int ntr = fVtx->GetNMCTracks();
@@ -1102,13 +1155,21 @@ Bool_t KMCDetectorFwd::SolveSingleTrackViaKalmanMC(int offset)
       if (currTr->IsKilled()) continue;
       double meas[2] = {0.,0.};
       if (fImposeVertexPosition) {
-	meas[0] = fRefVtx[0];
+        meas[0] = fRefVtx[0];
+        meas[1] = fRefVtx[1];	
 	meas[1] = fRefVtx[1];	
+        meas[1] = fRefVtx[1];	
+	meas[1] = fRefVtx[1];	
+        meas[1] = fRefVtx[1];	
+	meas[1] = fRefVtx[1];	
+        meas[1] = fRefVtx[1];	
+	meas[1] = fRefVtx[1];	
+        meas[1] = fRefVtx[1];	
       }
       else {
-	KMCClusterFwd* clv = fVtx->GetMCCluster();
-	meas[0] = clv->GetY();
-	meas[1] = clv->GetZ();
+        KMCClusterFwd* clv = fVtx->GetMCCluster();
+        meas[0] = clv->GetY();
+        meas[1] = clv->GetZ();
       }
       double measErr2[3] = {fVtx->GetYRes()*fVtx->GetYRes(),0,fVtx->GetXRes()*fVtx->GetXRes()}; //  Ylab<->Ytracking, Xlab<->Ztracking
       double chi2v = currTr->GetPredictedChi2(meas,measErr2);
@@ -1119,6 +1180,7 @@ Bool_t KMCDetectorFwd::SolveSingleTrackViaKalmanMC(int offset)
       // if (fVtx->IsITS()) {if (!UpdateTrack(currTr, fVtx, fVtx->GetMCCluster(), kFALSE)) {currTr->Kill();continue;}}
     }
   }
+  
   //  EliminateUnrelated(); //RSS
   int ntTot = lr->GetNMCTracks();
   ntTot = TMath::Min(1,ntTot);
@@ -1256,14 +1318,15 @@ void KMCDetectorFwd::CheckTrackProlongations(KMCProbeFwd *probe, KMCLayerFwd* lr
     if (fMinP2Propagate>0) {
       double p = newTr->GetTrack()->GetP();
       if (p<fMinP2Propagate) {
-	newTr->Kill();
-	lr->GetMCTracks()->RemoveLast();
-	continue;
+        newTr->Kill();
+        lr->GetMCTracks()->RemoveLast();
+        continue;
       }
     }
     newTr->AddHit(lrP, chi2, cl->GetTrID());
 
     //////////////////// check chi2 to vertex
+    
     if (fVtx && !fVtx->IsDead() && fMaxChi2Vtx>0) {
       double measVErr2[3] = {fVtx->GetYRes()*fVtx->GetYRes(),0,fVtx->GetXRes()*fVtx->GetXRes()}; // we work in tracking frame here!
       propVtx = *newTr;
@@ -1271,17 +1334,18 @@ void KMCDetectorFwd::CheckTrackProlongations(KMCProbeFwd *probe, KMCLayerFwd* lr
       if (!PropagateToZBxByBz(&propVtx,fRefVtx[2],fDefStepAir)) {/*printf("???????? Kill\n");*/ newTr->Kill(); lr->GetMCTracks()->RemoveLast();}
       double chi2V = propVtx.GetTrack()->GetPredictedChi2(fRefVtx,measVErr2);
       if (fHChi2VtxCorr && fHChi2VtxFake) {
-	if (IsCorrect(newTr)) fHChi2VtxCorr->Fill(newTr->GetNITSHits(),chi2V);
-	else                  fHChi2VtxFake->Fill(newTr->GetNITSHits(),chi2V);
+        if (IsCorrect(newTr)) fHChi2VtxCorr->Fill(newTr->GetNITSHits(),chi2V);
+        else                  fHChi2VtxFake->Fill(newTr->GetNITSHits(),chi2V);
       }
       AliDebug(2,Form("Chi2 to vertex: %f | y: Tr:%+8.4f Cl:%+8.4f  z: Tr:%+8.4f Cl: %+8.4f",chi2V,
 		      propVtx.GetTrack()->GetY(),fRefVtx[0],
 		      propVtx.GetTrack()->GetZ(),fRefVtx[1]));
 
       if (chi2V>fMaxChi2Vtx) {
-	newTr->Kill();
-	lr->GetMCTracks()->RemoveLast();
-	continue;
+        //printf("chi2 %f",chi2V);
+        newTr->Kill();
+        lr->GetMCTracks()->RemoveLast();
+        continue;
       }
 
       /*
@@ -1343,13 +1407,21 @@ Bool_t KMCDetectorFwd::NeedToKill(KMCProbeFwd* probe) const
     if (nITS>2) {  // check if smallest possible norm chi2/ndf is acceptable
       double chi2min = probe->GetChi2ITS();
       if (kModeKillMiss) {
-	int nMiss = fNActiveLayersITS - probe->GetInnerLayerChecked() - nITS; // layers already missed
-	chi2min = nMiss*probe->GetMissingHitPenalty();
+        int nMiss = fNActiveLayersITS - probe->GetInnerLayerChecked() - nITS; // layers already missed
+        chi2min = nMiss*probe->GetMissingHitPenalty();
       }
       chi2min /= ((nITSMax<<1)-KMCProbeFwd::kNDOF);
       if (chi2min>fMaxNormChi2NDF) {
+        kill = kTRUE; 
 	kill = kTRUE; 
-	break;
+        kill = kTRUE; 
+	kill = kTRUE; 
+        kill = kTRUE; 
+	kill = kTRUE; 
+        kill = kTRUE; 
+	kill = kTRUE; 
+        kill = kTRUE; 
+        break;
       }
     }
     //
@@ -1777,7 +1849,7 @@ void KMCDetectorFwd::InitBkg(double beamenergy){
     NBGKminus = 9.16;
     NBGP = (30.1/41.3)*37.5; //ratio 80/40 from PRC73, 044910 (2006)
     Piratio = 0.94;
-  }else if (E == 160){
+  }else if (E == 158){
     // pions and Kaons from  NA49 nucl-ex/0205002 
     printf("--- Background parameters for E=160 GeV/nucleon ---\n");
     y0BG = 2.9; // gaussian y mean - 160 GeV

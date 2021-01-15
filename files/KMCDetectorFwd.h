@@ -168,6 +168,26 @@ class KMCDetectorFwd : public TNamed {
   //
   float GetChi2MuAtVtx() const {return fChi2MuVtx;}
   
+  TH1F*     GetHhitITS()    const {return fHhitITS;}
+  TH1F*     GetHhitITSSum()    const {return fHhitITSSum;}
+  TH2F*     GetHhitITSvsX()    const {return fHhitITSvsX;}
+  TH2F*     GetHhitITSvsXSum()    const {return fHhitITSvsXSum;}
+  TH2F*     GetHhitITSvsY()    const {return fHhitITSvsY;}
+  TH2F*     GetHhitITSvsYSum()    const {return fHhitITSvsYSum;}
+  TH2F*     GetHhitITSvsZ()    const {return fHhitITSvsZ;}
+  TH2F*     GetHhitITSvsZSum()    const {return fHhitITSvsZSum;}
+  TH2F*     GetHhitITSvsYRap()    const {return fHhitITSvsYRap;}
+  TH2F*     GetHhitITSvsYRapSum()    const {return fHhitITSvsYRapSum;}
+  TH2F*     GetHhitITSvsPt()    const {return fHhitITSvsPt;}
+  TH2F*     GetHhitITSvsPtSum()    const {return fHhitITSvsPtSum;}
+  TH2F*     GetHhitITSvsTheta()    const {return fHhitITSvsTheta;}
+  TH2F*     GetHhitITSvsThetaSum()    const {return fHhitITSvsThetaSum;}
+  void      SetMother(float pt, float y, float mass){
+    fMPt = pt;
+    fMM  = mass;
+    fMY  = y;
+  }
+
   TH1*     GetHChi2Branson()    const {return fHChi2Branson;}
   TH2*     GetHChi2LrCorr()    const {return fHChi2LrCorr;}
   TH2*     GetHChi2NDFCorr()   const {return fHChi2NDFCorr;}
@@ -269,6 +289,25 @@ class KMCDetectorFwd : public TNamed {
 
   //
   // control histos
+  Int_t fOldHit;
+  Int_t fCounter = -1;
+  float fMM = 0;
+  float fMY = 0;
+  float fMPt = 0;
+  TH1F*    fHhitITS = new TH1F("fHhitITS",";hits;counts",6,-0.5,5.5);    // hitITS
+  TH1F*    fHhitITSSum = new TH1F("fHhitITSSum",";hits;counts",11,-0.5,10.5);    // hitITS
+  TH2F*    fHhitITSvsX = new TH2F("fHhitITSvsX",";x (cm);hits;counts",200,-10,10,6,-0.5,5.5);    // hitITS
+  TH2F*    fHhitITSvsXSum = new TH2F("fHhitITSvsXSum",";x (cm);hits;counts",200,-10,10,11,-0.5,10.5);    // hitITS
+  TH2F*    fHhitITSvsY = new TH2F("fHhitITSvsY",";y (cm);hits;counts",200,-10,10,6,-0.5,5.5);    // hitITS
+  TH2F*    fHhitITSvsYSum = new TH2F("fHhitITSvsYSum",";y (cm);hits;counts",200,-10,10,11,-0.5,10.5);    // hitITS
+  TH2F*    fHhitITSvsZ = new TH2F("fHhitITSvsZ",";z (cm);hits;counts",300,0,30,6,-0.5,5.5);    // hitITS
+  TH2F*    fHhitITSvsZSum = new TH2F("fHhitITSvsZSum",";z (cm);hits;counts",300,0,30,11,-0.5,10.5);    // hitITS
+  TH2F*    fHhitITSvsYRap = new TH2F("fHhitITSvsYRap",";y;hits;counts",200,-1,6,6,-0.5,5.5);    // hitITS
+  TH2F*    fHhitITSvsYRapSum = new TH2F("fHhitITSvsYRapSum",";y;hits;counts",200,-1,6,11,-0.5,10.5);    // hitITS
+  TH2F*    fHhitITSvsPt = new TH2F("fHhitITSvsPt",";#it{p}_{T} (GeV/#it{c});hits;counts",200,0,2,6,-0.5,5.5);    // hitITS
+  TH2F*    fHhitITSvsPtSum = new TH2F("fHhitITSvsPtSum",";#it{p}_{T} (GeV/#it{c});hits;counts",200,0,2,11,-0.5,10.5);    // hitITS
+  TH2F*    fHhitITSvsTheta = new TH2F("fHhitITSvsTheta",";#theta;hits;counts",200,0,TMath::Pi()/2.,6,-0.5,5.5);    // hitITS
+  TH2F*    fHhitITSvsThetaSum = new TH2F("fHhitITSvsThetaSum",";#theta;hits;counts",200,0,TMath::Pi()/2.,11,-0.5,10.5);    // hitITS
   TH1F*    fHChi2Branson;    // chi2 of muon at the vertex
   TH2F*    fHChi2LrCorr;    // chi2 of correct cluster
   TH2F*    fHChi2NDFCorr;   // total chi2 of correct tracks

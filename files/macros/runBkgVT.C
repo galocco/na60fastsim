@@ -7,8 +7,8 @@
 #include <TH1F.h>
 #include <TNtuple.h>
 #include <TFile.h>
-#include "KMCDetectorFwd.h"
-#include "KMCProbeFwd.h"
+#include "../KMCDetectorFwd.h"
+#include "../KMCProbeFwd.h"
 #include "TLorentzVector.h"
 #include "TGenPhaseSpace.h"
 #include "TRandom.h"
@@ -33,10 +33,12 @@ double vX = 0, vY = 0, vZ = 0; // event vertex
 
 TDatime dt;
 
-void runBkgVT(Int_t nevents = 100, 
-	      double Eint = 160.,
-	      const char *setup = "setup-10um-itssa_Eff1.txt",
-	      bool simulateBg=kTRUE)
+void runBkgVT(Int_t nevents = 5, 
+	      double Eint = 160.,//"../setups/setup_EHN1-H8_short_10pixel_1.5T_BB.txt",/
+	      const char *setup = "../setups/setup-EHN1_BetheBloch.txt",
+        TString suffix = "_layer5",
+	      bool simulateBg=kTRUE,
+        int minITSHits = 5)
 {
 
   int refreshBg = 100;
@@ -44,7 +46,10 @@ void runBkgVT(Int_t nevents = 100,
   gRandom->SetSeed(seed);
   //gSystem->Setenv("PYTHIA8DATA", gSystem->ExpandPathName("$ALICE_ROOT/PYTHIA8/pythia8210/xmldoc")); // check if pythia8 path is set correctly !!!!
   
-  
+  TH2F *hResPy = new TH2F("hResPy", ";#it{p}_{ygen}-#it{p}_{yrec} (GeV/#it{c});#it{p}_{T} (GeV/#it{c});counts", 25, -0.001, 0.001, 30, 0, 3);
+  TH2F *hResPyPos = new TH2F("hResPyPos", ";#it{p}_{ygen}-#it{p}_{yrec} (GeV/#it{c});#it{p}_{T} (GeV/#it{c});counts", 25, -0.001, 0.001, 30, 0, 3);
+  TH2F *hResPyNeg = new TH2F("hResPyNeg", ";#it{p}_{ygen}-#it{p}_{yrec} (GeV/#it{c});#it{p}_{T} (GeV/#it{c});counts", 25, -0.001, 0.001, 30, 0, 3);
+
   TH3F *h3DPiBkg = new TH3F("h3DPiBkg", "pt,y,phi pions", 50, 0., 5., 50, 0., 5., 50, 0, 2 * TMath::Pi());
   TH3F *h3DKBkg = new TH3F("h3DKBkg", "pt,y,phi pions", 50, 0., 5., 50, 0., 5., 50, 0, 2 * TMath::Pi());
   TH3F *h3DPBkg = new TH3F("h3DPBkg", "pt,y,phi pions", 50, 0., 5., 50, 0., 5., 50, 0, 2 * TMath::Pi());
@@ -94,7 +99,7 @@ void runBkgVT(Int_t nevents = 100,
   det->InitBkg(Eint);
   
   det->ForceLastActiveLayer(det->GetLastActiveLayerITS()); // will not propagate beyond VT
-  det->SetMinITSHits(det->GetNumberOfActiveLayersITS()); //NA60+
+  det->SetMinITSHits(minITSHits); //NA60+
   // we don't need MS part here, even if it is in the setup
   //det->SetMinITSHits(det->GetNumberOfActiveLayersITS()-1); //NA60
   det->SetMinMSHits(0); //NA60+
@@ -107,7 +112,7 @@ void runBkgVT(Int_t nevents = 100,
   // set chi2 cuts
   det->SetMaxChi2Cl(10.);  // max track to cluster chi2
   det->SetMaxChi2NDF(3.5); // max total chi2/ndf
-  det->SetMaxChi2Vtx(20);  // fiducial cut on chi2 of convergence to vtx
+  det->SetMaxChi2Vtx(-20);  // fiducial cut on chi2 of convergence to vtx
   
   // IMPORTANT FOR NON-UNIFORM FIELDS
   det->SetDefStepAir(1);
@@ -132,7 +137,7 @@ void runBkgVT(Int_t nevents = 100,
 
 
 
-  TFile *f = new TFile("treeBkgEvents.root", "RECREATE");
+  TFile *f = new TFile(Form("treeBkgEvents%s.root",suffix.Data()), "RECREATE");
   TTree *tree = new TTree("tree", "tree Bkg");
   TClonesArray *arrtr = new TClonesArray("KMCProbeFwd");
   TClonesArray &aarrtr = *arrtr;
@@ -165,20 +170,26 @@ void runBkgVT(Int_t nevents = 100,
 
       TLorentzVector *ppi = new TLorentzVector(0., 0., 0., 0.);
       ppi->SetXYZM(pxyz[0], pxyz[1], pxyz[2], mass);
+      double py= pxyz[1];
       if (!det->SolveSingleTrack(ppi->Pt(), ppi->Rapidity(), ppi->Phi(), mass, charge, vX, vY, vZ, 0, 1, 99)){
-	hGenStat->Fill(2);
-	continue;
+        hGenStat->Fill(2);
+        continue;
       }
       KMCProbeFwd *trw = det->GetLayer(0)->GetWinnerMCTrack();
       if (!trw){
-	hGenStat->Fill(3);
-	continue;
+        hGenStat->Fill(3);
+        continue;
       }
       if (trw->GetNormChi2(kTRUE) > ChiTot){
-	hGenStat->Fill(4);
-	continue;
+        hGenStat->Fill(4);
+        continue;
       }
       trw->GetPXYZ(pxyz);
+      hResPy->Fill(pxyz[1]-py,ppi->Pt());
+      if(charge>0)
+        hResPyPos->Fill(pxyz[1]-py,ppi->Pt());
+      else
+        hResPyNeg->Fill(pxyz[1]-py,ppi->Pt());
       //printf("charge = %d, %f \n", charge, trw->GetCharge());
       new (aarrtr[icount]) KMCProbeFwd(*trw);
       hGenStat->Fill(5);
@@ -202,20 +213,22 @@ void runBkgVT(Int_t nevents = 100,
       
       TLorentzVector *pk = new TLorentzVector(0., 0., 0., 0.);
       pk->SetXYZM(pxyz[0], pxyz[1], pxyz[2], mass);
+      double py= pxyz[1];
       if (!det->SolveSingleTrack(pk->Pt(), pk->Rapidity(), pk->Phi(), mass, charge, vX, vY, vZ, 0, 1, 99)){
-	hGenStat->Fill(8);
-	continue;
+        hGenStat->Fill(8);
+        continue;
       }
       KMCProbeFwd *trw2 = det->GetLayer(0)->GetWinnerMCTrack();
       if (!trw2){
-	hGenStat->Fill(9);
-	continue;
+        hGenStat->Fill(9);
+        continue;
       }
       if (trw2->GetNormChi2(kTRUE) > ChiTot){
-	hGenStat->Fill(10);
-	continue;
+        hGenStat->Fill(10);
+        continue;
       }
       trw2->GetPXYZ(pxyz);
+      //hResPy->Fill(pxyz[1]-py,pk->Pt());
       //printf("charge = %d, %f \n", charge, trw2->GetCharge());
       new (aarrtr[icount]) KMCProbeFwd(*trw2);
       hGenStat->Fill(11);
@@ -238,20 +251,23 @@ void runBkgVT(Int_t nevents = 100,
       
       TLorentzVector *pp = new TLorentzVector(0., 0., 0., 0.);
       pp->SetXYZM(pxyz[0], pxyz[1], pxyz[2], mass);
+      double py= pxyz[1];
+
       if (!det->SolveSingleTrack(pp->Pt(), pp->Rapidity(), pp->Phi(), mass, charge, vX, vY, vZ, 0, 1, 99)){
-	hGenStat->Fill(14);
-	continue;
+        hGenStat->Fill(14);
+        continue;
       }
       KMCProbeFwd *trw3 = det->GetLayer(0)->GetWinnerMCTrack();
       if (!trw3){
-	hGenStat->Fill(15);
-	continue;
+        hGenStat->Fill(15);
+        continue;
       }
       if (trw3->GetNormChi2(kTRUE) > ChiTot){
-	hGenStat->Fill(16);
-	continue;
+        hGenStat->Fill(16);
+        continue;
       }
       trw3->GetPXYZ(pxyz);
+      //hResPy->Fill(pxyz[1]-py,pp->Pt());
       //printf("charge = %d, %f \n", charge, trw3->GetCharge());
       new (aarrtr[icount]) KMCProbeFwd(*trw3);
       hGenStat->Fill(17);
@@ -265,8 +281,11 @@ void runBkgVT(Int_t nevents = 100,
   tree->Write();
   f->Close();
   
-  TFile *outfile = new TFile("bkgdistributions.root", "recreate");
+  TFile *outfile = new TFile(Form("bkgdistributions%s.root",suffix.Data()), "recreate");
   outfile->cd();
+  hResPy->Write();
+  hResPyNeg->Write();
+  hResPyPos->Write();
   hNevents->Write();
   hGenStat->Write();
   h3DPiBkg->Write();
