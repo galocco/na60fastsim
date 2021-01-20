@@ -34,16 +34,17 @@ double vX = 0, vY = 0, vZ = 0; // event vertex
 TDatime dt;
 
 void runBkgVT(Int_t nevents = 5, 
-	      double Eint = 160.,//"../setups/setup_EHN1-H8_short_10pixel_1.5T_BB.txt",/
+	      double Eint = 158.,//"../setups/setup_EHN1-H8_short_10pixel_1.5T_BB.txt",/
 	      const char *setup = "../setups/setup_short_5pixel_1.5T.txt",
-        TString suffix = "_layer5",
+        TString suffix = "_K0s",
 	      bool simulateBg=kTRUE,
         int minITSHits = 5)
 {
 
   int refreshBg = 100;
   static UInt_t seed = dt.Get();
-  gRandom->SetSeed(seed);
+  int newseed = 0;
+  gRandom->SetSeed(seed);//seed);
   //gSystem->Setenv("PYTHIA8DATA", gSystem->ExpandPathName("$ALICE_ROOT/PYTHIA8/pythia8210/xmldoc")); // check if pythia8 path is set correctly !!!!
   
   TH2F *hResPy = new TH2F("hResPy", ";#it{p}_{ygen}-#it{p}_{yrec} (GeV/#it{c});#it{p}_{T} (GeV/#it{c});counts", 25, -0.001, 0.001, 30, 0, 3);
@@ -151,6 +152,7 @@ void runBkgVT(Int_t nevents = 5,
     if (simulateBg && (iev % refreshBg) == 0)
       det->GenBgEvent(vX, vY, vZ);
     
+    //gRandom->SetSeed(newseed++);//seed);
     double ntrPi = gRandom->Poisson(det->GetNChPi());
     //printf("fNChPi=%f ntrPi=%f\n", det->GetNChPi(), ntrPi);
 
@@ -158,7 +160,8 @@ void runBkgVT(Int_t nevents = 5,
     int charge;
     double mass;
     Int_t icount = 0;
-    for (int itr = 0; itr < ntrPi; itr++){	
+    for (int itr = 0; itr < ntrPi; itr++){
+      //gRandom->SetSeed(newseed++);//seed);
       yrap = fdNdYPi->GetRandom();
       pt = fdNdPtPi->GetRandom();
       phi = gRandom->Rndm() * TMath::Pi() * 2;
@@ -198,10 +201,12 @@ void runBkgVT(Int_t nevents = 5,
     }
 
     // kaons
+    //gRandom->SetSeed(newseed++);
     double ntrK = gRandom->Poisson(det->GetNChK());
     //printf("fNChK=%f ntrK=%f\n", det->GetNChK(), ntrK);
     
     for (int itr = 0; itr < ntrK; itr++){
+      //gRandom->SetSeed(newseed++);
       yrap = fdNdYK->GetRandom();
       pt = fdNdPtK->GetRandom();
       phi = gRandom->Rndm() * TMath::Pi() * 2;
@@ -237,11 +242,14 @@ void runBkgVT(Int_t nevents = 5,
     }
     
     // protons
+    //gRandom->SetSeed(newseed++);
     double ntrP = gRandom->Poisson(det->GetNChP());
     //printf("fNChP=%f ntrP=%f\n", det->GetNChP(), ntrP);
     for (int itr = 0; itr < ntrP; itr++){
+      //gRandom->SetSeed(newseed++);
       yrap = fdNdYP->GetRandom();
       pt = fdNdPtP->GetRandom();
+      //std::cout<<"pt: "<<pt<<" y: "<<yrap<<std::endl;
       phi = gRandom->Rndm() * TMath::Pi() * 2;
       charge = 1;
       mass = KMCDetectorFwd::kMassP;
@@ -266,6 +274,7 @@ void runBkgVT(Int_t nevents = 5,
         hGenStat->Fill(16);
         continue;
       }
+
       trw3->GetPXYZ(pxyz);
       //hResPy->Fill(pxyz[1]-py,pp->Pt());
       //printf("charge = %d, %f \n", charge, trw3->GetCharge());

@@ -92,7 +92,7 @@ Double_t O2Vertexer(AliExternalTrackParam kTrack[], Double_t kMasses[], int n_da
 void GenerateSignalCandidates(Int_t nevents = 100000, 
 				double Eint = 158, 
         TString suffix = "_K0s",
-				const char *setup = "../setups/setup_short_5pixel_1.5T.txt",
+				const char *setup = "../setups/setup-EHN1_BetheBloch.txt",
 				const char *privateDecayTable = "../decaytables/USERTABK0.DEC",
 				bool writeNtuple = kTRUE, 
 				bool simulateBg=kFALSE,
@@ -310,7 +310,7 @@ void GenerateSignalCandidates(Int_t nevents = 100000,
     int nfake = 0;
     double pxyz[3];
     bool cond1 = true,cond2 = true,cond3 = true;
-    if (simulateBg & iev%refreshBg==0) det->GenBgEvent(0.,0.,0.);
+    if (simulateBg && iev%refreshBg==0) det->GenBgEvent(0.,0.,0.);
     Double_t ptGen = fpt->GetRandom(ptminSG,ptmaxSG); 
     Double_t yGen = fy->GetRandom(-10,10)+y0;
     Double_t phi = gRandom->Rndm() * 2 * TMath::Pi();
@@ -718,12 +718,18 @@ void GenerateSignalCandidates(Int_t nevents = 100000,
   for(int i = 1; i <= hPtEff->GetNbinsX(); i++){
     double eff = hPtEff->GetBinContent(i);
     double n = hPtGen->GetBinContent(i);
-    hPtEff->SetBinError(i,TMath::Sqrt(eff*(1-eff)/n));
+    if(n>0)
+      hPtEff->SetBinError(i,TMath::Sqrt(eff*(1-eff)/n));
+    else
+      hPtEff->SetBinError(i,0);
   }
   for(int i = 1; i <= hYEff->GetNbinsX(); i++){
     double eff = hYEff->GetBinContent(i);
     double n = hYGen->GetBinContent(i);
-    hYEff->SetBinError(i,TMath::Sqrt(eff*(1-eff)/n));
+    if(n>0)
+      hYEff->SetBinError(i,TMath::Sqrt(eff*(1-eff)/n));
+    else
+      hYEff->SetBinError(i,0);
   }
   hYPtGen->Write();
   hPtGen->Write();
@@ -1112,7 +1118,8 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFile="treeBkgEvents_layer
              TString suffix = "_K0s",
 			       Int_t nevents = 999999, 
 			       Int_t writeNtuple = kTRUE,
-             int pdgMother = 310){
+             int pdgMother = 310,
+             bool matter = true){
 
   // Read the TTree of tracks produced with runBkgVT.C
   // Create D0 combinatorial background candidates (= OS pairs of tracks)
@@ -1126,8 +1133,6 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFile="treeBkgEvents_layer
   printf("Number of events in tree = %d\n",entries);
   if(nevents>entries) nevents=entries;
   else printf(" --> Analysis performed on first %d events\n",nevents);
-  int pdg_dau[2] = {0,0};
-  GetPDGDaughters(pdgMother,pdg_dau,pdgMother > 0);
 
   TDatime dt;
   static UInt_t seed = dt.Get();
@@ -1139,8 +1144,13 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFile="treeBkgEvents_layer
   TH2F* hYPtRecoAll = new TH2F("hYPtRecoAll", "Y-Pt all match", 40, 1., 5., 50, 0., 5.);
   TH1D* hMassAll = new TH1D("hMassAll", "Mass all match", 250, 0., 2.5);
 
-  TH2F *hDistXY = new TH2F("hDistXY", "", 100, 0, 0.1, 30, 0, 3);
-  TH2F *hDist = new TH2F("hDist", "", 300, 0, 10, 30, 0, 3);
+  TH2F *hDistXY = new TH2F("hDistXY", ";d_{xy} (cm); #it{p}_{T} (GeV/#it{c}) ;counts", 100, 0, 0.1, 100, 0, 3);
+  TH2F *hDistXYPlane = new TH2F("hDistXYPlane", ";x (cm); y (cm);counts", 100, -0.004, 0.004, 100, -0.0000001, 0.00000001);
+  TH2F *hDistVsPt = new TH2F("hDistVsPt", ";z (cm); #it{p}_{T} (GeV/#it{c});counts", 300, 0, 3, 30, 0, 3);
+  TH2F *hDistzVsPt = new TH2F("hDistzVsPt", ";z (cm); #it{p}_{T} (GeV/#it{c});counts", 300, 0, 3, 30, 0, 3);
+  TH1F *hDist = new TH1F("hDist", ";z (cm); counts", 100, 0, 3);
+  TH1F *hDistz = new TH1F("hDistz", ";z (cm); counts", 100, 0, 0.0001);
+
   TH2F *hDistgenXY = new TH2F("hDistgenXY", "", 100, 0, 0.1, 30, 0, 3);
   TH2F *hDistgen = new TH2F("hDistgen", "", 300, 0, 10, 30, 0, 3);
   TH2F *hDCA = new TH2F("hDCA", "", 100, 0, 0.1, 30, 0, 3);
@@ -1173,14 +1183,19 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFile="treeBkgEvents_layer
 
   TFile *fnt = 0x0;
   TNtuple *ntcand = 0x0;
-  Float_t arrnt[11];
+  Float_t arrnt[14];
   if (writeNtuple){
     fnt = new TFile(Form("fntBkg%s.root",suffix.Data()), "recreate");
-    ntcand = new TNtuple("ntcand", "ntcand", "mass:pt:y:dist:cosp:d01:d02:d0prod:dca:ptMin:ptMax", 32000);
+    ntcand = new TNtuple("ntcand", "ntcand", "mass:pt:y:dist:cosp:d01:d02:d0prod:dca:ptMin:ptMax:xP:yP:zP", 32000);
   }
 
+  //read the pdg code of the daughters
+  int pdg_dau[2] = {0,0};
+  GetPDGDaughters(pdgMother,pdg_dau,matter);
+  bool swap_mass = pdg_dau[0]!=pdg_dau[1];
   KMCProbeFwd recProbe[2];
   TLorentzVector parent, daurec[2];
+  int icount = 0;
   for (Int_t iev = 0; iev < nevents; iev++){
     hNevents->Fill(0.5);
     Double_t vprim[3] = {0, 0, 0};
@@ -1190,6 +1205,7 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFile="treeBkgEvents_layer
     Int_t arrentr = arr->GetEntriesFast();
     
     for (Int_t itr = 0; itr < arrentr; itr++){
+      icount++;
       KMCProbeFwd *tr1 = (KMCProbeFwd *)arr->At(itr);
       // cout << "tr P=" << tr1->GetP() << endl;
       Float_t ch1 = tr1->GetCharge();
@@ -1204,14 +1220,34 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFile="treeBkgEvents_layer
           recProbe[0] = *tr2;
           recProbe[1] = *tr1;
         }
-        recProbe[0].PropagateToDCA(&recProbe[1]);
+
         Double_t pxyz[3];
-        recProbe[0].GetPXYZ(pxyz);
+        recProbe[0].GetXYZ(pxyz);
         
         Double_t pxyz2[3];
+        recProbe[1].GetXYZ(pxyz2);
+
+        if(icount < 10){
+          printf("pair number %i\n",icount);
+          printf("track1 at z=0 ev x %f y %f z %f\n",pxyz[0],pxyz[1],pxyz[2]);
+          printf("track2 at z=0 ev x %f y %f z %f\n",pxyz2[0],pxyz2[1],pxyz2[2]);
+        }
+        recProbe[0].PropagateToZBxByBz(0.1);
+        recProbe[1].PropagateToZBxByBz(0.1);
+        recProbe[0].PropagateToDCA(&recProbe[1]);
+        recProbe[0].GetXYZ(pxyz);
+        recProbe[1].GetXYZ(pxyz2);
+        if(icount < 10){
+          printf("track1 at DCA ev x:%f y:%f z:%f\n",pxyz[0],pxyz[1],pxyz[2]);
+          printf("track2 at DCA ev x:%f y:%f z:%f\n",pxyz2[0],pxyz2[1],pxyz2[2]);
+        }
+
+        recProbe[0].GetXYZ(pxyz);
+        recProbe[1].GetXYZ(pxyz2);
+        recProbe[0].GetPXYZ(pxyz);
         recProbe[1].GetPXYZ(pxyz2);
 	
-        for(Int_t iMassHyp=0; iMassHyp<2; iMassHyp++){
+        for(Int_t iMassHyp=0; iMassHyp<1; iMassHyp++){
           Int_t iNeg=-1;
           if(iMassHyp==0){
             daurec[0].SetXYZM(pxyz[0], pxyz[1], pxyz[2], TDatabasePDG::Instance()->GetParticle(pdg_dau[1])->Mass());
@@ -1245,7 +1281,10 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFile="treeBkgEvents_layer
             hDCAy->Fill(d2, pt);
             hDCAz->Fill(d3, pt);
             Double_t xP, yP, zP;
-            ComputeVertex(recProbe[0],recProbe[1],xP,yP,zP);
+            ComputeVertex(recProbe[0],recProbe[1],xP,yP,zP);    
+            //if(itr+itr2 < 10 && iMassHyp==0)
+              //printf("vtx ev x:%f y:%f z:%f\n",xP,yP,zP);
+            //std::cout<<"z "<<zP<<std::endl;
             Float_t dist = TMath::Sqrt(xP * xP + yP * yP + zP * zP);
             Float_t distXY = TMath::Sqrt(xP * xP + yP * yP);
             Double_t vsec[3] = {xP, yP, zP};
@@ -1256,15 +1295,19 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFile="treeBkgEvents_layer
             hCosThStVsMass->Fill(invMass,cts);
             //printf(" ***** ***** cos point = %f \n", cosp);	    
             hDistXY->Fill(distXY, pt);
-            hDist->Fill(dist, pt);
+            hDistXYPlane->Fill(xP, zP);
+            hDistVsPt->Fill(dist, pt);
+            hDistzVsPt->Fill(zP, pt);
+            hDist->Fill(dist);
+            hDistz->Fill(zP);
             
-            recProbe[0].PropagateToZBxByBz(0);
+            //recProbe[0].PropagateToZBxByBz(0);
             Double_t d0x1 = recProbe[0].GetX();
             Double_t d0y1 = recProbe[0].GetY();
             Double_t d0xy1 = TMath::Sqrt(d0x1 * d0x1 + d0y1 * d0y1);
             if (d0x1 < 0) d0xy1 *= -1;
             
-            recProbe[1].PropagateToZBxByBz(0);
+            //recProbe[1].PropagateToZBxByBz(0);
             Double_t d0x2 = recProbe[1].GetX();
             Double_t d0y2 = recProbe[1].GetY();
             Double_t d0xy2 = TMath::Sqrt(d0x2 * d0x2 + d0y2 * d0y2);
@@ -1300,6 +1343,9 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFile="treeBkgEvents_layer
               arrnt[8] = dca;
               arrnt[9] = TMath::Min(recProbe[0].GetTrack()->Pt(),recProbe[1].GetTrack()->Pt());
               arrnt[10] = TMath::Max(recProbe[0].GetTrack()->Pt(),recProbe[1].GetTrack()->Pt());
+              arrnt[11] = xP;
+              arrnt[12] = yP;
+              arrnt[13] = zP;
               ntcand->Fill(arrnt);
             }
 	    
@@ -1321,7 +1367,11 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFile="treeBkgEvents_layer
   hYPtRecoAll->Write();
   hPtRecoAll->Write();
   hDistXY->Write();
+  hDistVsPt->Write();
   hDist->Write();
+  hDistXYPlane->Write();
+  hDistzVsPt->Write();
+  hDistz->Write();
   hDCA->Write();
   hDCAx->Write();
   hDCAy->Write();
