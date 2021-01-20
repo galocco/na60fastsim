@@ -49,9 +49,14 @@ double Elab[NEnergy] = {20,30,40,80,158};
 double Tslope[2][NParticles][NEnergy] = {{{196.8,237.4,244.6,239.8,298.7},{0,0,228.9, 223.1, 228.9},{244,249,258,265,301},{0,0,218,0,267},{221,233,222,227,277}},//matter e rapidity distribution [matter/antimatter][particle][beam energy]
                                          {{196.8,237.4,244.6,239.8,298.7},{0,0,226,217,226},{339,284,301,292,303},{0,0,218,0,259},{311,277,255,321,0}}};//antimatter
 //sigma parameter of the gaussians of th                    phi                        K                       Lambda                Omega                    Csi
+<<<<<<< HEAD
 double sigma_rapidity[2][NParticles][NEnergy] = {{{0.425,0.538,0.696,0.658,1.451},{0,0,0.674, 0.743, 0.84},{0.51,0.66,0.91,0.87,1.0},{0,0,0.6,0,1.2},{0.45,0.56,0.76,0.71,1.18}},//matter
                                                  {{0.425,0.538,0.696,0.658,1.451},{0,0,0,0,0},{0,0,0.71,0.85,0.95},{0,0,0.6,0,1.0},{0,0,0,0,1.2}}};//antimatter
 //anti omega sigma  e lambda
+=======
+double sigma_rapidity[2][NParticles][NEnergy] = {{{0.425,0.538,0.696,0.658,1.451},{0,0,0.674, 0.743, 0.84},{0.51,0.66,0.91,0.87,0},{0,0,0.6,0,1.2},{0.45,0.56,0.76,0.71,1.18}},//matter
+                                                 {{0.425,0.538,0.696,0.658,1.451},{0,0,0,0,0},{0,0,0.71,0.85,0.95},{0,0,0.6,0,1.0},{0,0,0,0,0}}};//antimatter
+>>>>>>> 6bce301a9d1ebb1bbdc6e5cb9923347516f42b8b
 //mu paramter of the gaussian of the rapidity distribution [matter/antimatter][particle][beam energy]
 //                                                       phi                        K                   Lambda                   Omega                    Csi
 double y0_rapidity[2][NParticles][NEnergy] = {{{0.425,0.538,0.487,0.682,0.},{0,0,0.619, 0.701, 0.775},{0.49,0.59,0.65,0.94,0},{0,0,0,0,0},{0.45,0.47,0.54,0.68,0}},//matter
@@ -79,7 +84,11 @@ void GetPDGDaughters(int pdgParticle,int pdgDaughters[], bool matter);
 TDatime dt;
 
 void runBkgVT(Int_t nevents = 5, 
+<<<<<<< HEAD
 	      double Eint = 158.,//"../setups/setup_EHN1-H8_short_10pixel_1.5T_BB.txt",/
+=======
+	      double Eint = 160.,//"../setups/setup_EHN1-H8_short_10pixel_1.5T_BB.txt",/
+>>>>>>> 6bce301a9d1ebb1bbdc6e5cb9923347516f42b8b
 	      const char *setup = "../setups/setup-EHN1_BetheBloch.txt",
         TString suffix = "_layer5",
 	      bool simulateBg=kTRUE,
@@ -224,9 +233,93 @@ void runBkgVT(Int_t nevents = 5,
       det->GenBgEvent(vX, vY, vZ);
 
     Int_t icount = 0;
+<<<<<<< HEAD
     printf("ok");
     double ntrPi = gRandom->Poisson(det->GetNChPi());
     printf("fNChPi=%f ntrPi=%f\n", det->GetNChPi(), ntrPi);
+=======
+    //if(false)
+    for (int im = 0; im < NParticles; im++){
+      int pdg_mom = pdg_mother[im];
+      if(pdg_target==pdg_mom)
+        continue;
+      printf(" ***************  pdg = %d \n", pdg_mom);
+
+
+      mass = TDatabasePDG::Instance()->GetParticle(pdg_mom)->Mass();
+      multiplicity = GetMultiplicity(pdg_mom,Eint,true)+GetMultiplicity(pdg_mom,Eint,false);
+      ntrack = gRandom->Poisson(multiplicity);
+      //std::cout<<"ntrack: "<<ntrack<<std::endl;
+
+
+      for (int itr = 0; itr < ntrack; itr++){
+        //printf(" ***************  trk = %d \n", itr);
+        charge = gRandom->Rndm() > GetMultiplicity(pdg_mom,Eint,false)/multiplicity ? 1 : -1;
+        fpt->SetParameter(0,mass);
+        fpt->SetParameter(1,GetTslope(pdg_mom,Eint,charge==1)/1000);
+        fy->SetParameter(0,GetY0Rapidity(pdg_mom,Eint,charge==1));
+        fy->SetParameter(1,GetSigmaRapidity(pdg_mom,Eint,charge==1));
+        yrap = fpt->GetRandom();
+        pt = fy->GetRandom();
+        phi = gRandom->Rndm() * TMath::Pi() * 2;
+        pxGen = pt * TMath::Cos(phi);
+        pyGen = pt * TMath::Sin(phi);
+        mt = TMath::Sqrt(pt * pt + mass * mass);
+        pzGen = mt * TMath::SinH(yrap);
+        en = mt * TMath::CosH(yrap);
+
+
+        TClonesArray *particles = new TClonesArray("TParticle", 1000);
+        TLorentzVector *mom = new TLorentzVector();
+        mom->SetPxPyPzE(pxGen, pyGen, pzGen, en);
+        Int_t np;
+        do{
+          fDecayer->Decay(pdg_mom, mom);
+          np = fDecayer->ImportParticles(particles);
+        } while (np < 0);
+
+        h3DPiBkg->Fill(pt, yrap, phi);
+        hGenStat->Fill(1);
+
+        // loop on decay products
+        //printf(" ***************  nptot = %d \n", np);
+        for (int i = 0; i < np; i++) {
+
+          TParticle *iparticle = (TParticle *)particles->At(i);
+          Int_t kf = iparticle->GetPdgCode();
+          if(kf == 22) continue;
+          //printf(" ***************  np = %d pdg = %d\n", i, kf);
+          vX = iparticle->Vx();
+          vY = iparticle->Vy();
+          vZ = iparticle->Vz();
+          Int_t crg= (iparticle->GetPdgCode()>0) ? 1 : -1;
+          TLorentzVector partVector;
+          partVector.SetXYZM(iparticle->Px(), iparticle->Py(), iparticle->Pz(), iparticle->GetMass());
+          if (!det->SolveSingleTrack(partVector.Pt(), partVector.Rapidity(), partVector.Phi(), iparticle->GetMass(), crg, vX, vY, vZ, 0, 1, 99)){  
+            hGenStat->Fill(2);
+            continue;
+          }
+
+          KMCProbeFwd *trw = det->GetLayer(0)->GetWinnerMCTrack();
+          if (!trw){
+            hGenStat->Fill(3);
+            continue;
+          }
+          if (trw->GetNormChi2(kTRUE) > ChiTot){
+            hGenStat->Fill(4);
+            continue;
+          }
+          new (aarrtr[icount]) KMCProbeFwd(*trw);
+          hGenStat->Fill(5);
+          if(trw->GetNFakeITSHits()>0) hGenStat->Fill(6);
+          icount++;
+        }
+      }
+    }
+
+    double ntrPi = gRandom->Poisson(det->GetNChPi());
+    //printf("fNChPi=%f ntrPi=%f\n", det->GetNChPi(), ntrPi);
+>>>>>>> 6bce301a9d1ebb1bbdc6e5cb9923347516f42b8b
 
     printf(" ***************  pdg = pion \n");
 
@@ -319,6 +412,7 @@ void runBkgVT(Int_t nevents = 5,
       new (aarrtr[icount]) KMCProbeFwd(*trw3);
       icount++;
     }
+<<<<<<< HEAD
     //if(false)
     for (int im = 0; im < NParticles; im++){
       int pdg_mom = pdg_mother[im];
@@ -401,6 +495,10 @@ void runBkgVT(Int_t nevents = 5,
     
   
     printf("Background in array = %d track p %d pi %d k %d \n",icount,ntrP,ntrPi,ntrK);
+=======
+
+    //printf("Background in array = %d out of %.0f \n",icount,ntrack);
+>>>>>>> 6bce301a9d1ebb1bbdc6e5cb9923347516f42b8b
     tree->Fill();
   }
   f->cd();
