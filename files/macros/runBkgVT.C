@@ -35,7 +35,7 @@ TDatime dt;
 
 void runBkgVT(Int_t nevents = 5, 
 	      double Eint = 158.,//"../setups/setup_EHN1-H8_short_10pixel_1.5T_BB.txt",/
-	      const char *setup = "../setups/setup-EHN1_BetheBloch.txt",
+	      const char *setup = "../setups/setup_short_5pixel_1.5T.txt",
         TString suffix = "_layer5",
 	      bool simulateBg=kTRUE,
         int minITSHits = 5)
