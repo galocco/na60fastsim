@@ -43,7 +43,8 @@ void runBkgVT(Int_t nevents = 5,
 
   int refreshBg = 100;
   static UInt_t seed = dt.Get();
-  gRandom->SetSeed(10);//seed);
+  int newseed = 0;
+  gRandom->SetSeed(newseed++);
   //gSystem->Setenv("PYTHIA8DATA", gSystem->ExpandPathName("$ALICE_ROOT/PYTHIA8/pythia8210/xmldoc")); // check if pythia8 path is set correctly !!!!
   
   TH2F *hResPy = new TH2F("hResPy", ";#it{p}_{ygen}-#it{p}_{yrec} (GeV/#it{c});#it{p}_{T} (GeV/#it{c});counts", 25, -0.001, 0.001, 30, 0, 3);
@@ -151,7 +152,7 @@ void runBkgVT(Int_t nevents = 5,
     if (simulateBg && (iev % refreshBg) == 0)
       det->GenBgEvent(vX, vY, vZ);
     
-    //gRandom->SetSeed(newseed++);//seed);
+    gRandom->SetSeed(newseed++);//seed);
     double ntrPi = gRandom->Poisson(det->GetNChPi());
     //printf("fNChPi=%f ntrPi=%f\n", det->GetNChPi(), ntrPi);
 
@@ -160,7 +161,7 @@ void runBkgVT(Int_t nevents = 5,
     double mass;
     Int_t icount = 0;
     for (int itr = 0; itr < ntrPi; itr++){
-      //gRandom->SetSeed(newseed++);//seed);
+      gRandom->SetSeed(newseed++);//seed);
       yrap = fdNdYPi->GetRandom();
       pt = fdNdPtPi->GetRandom();
       phi = gRandom->Rndm() * TMath::Pi() * 2;
@@ -200,12 +201,12 @@ void runBkgVT(Int_t nevents = 5,
     }
 
     // kaons
-    //gRandom->SetSeed(newseed++);
+    gRandom->SetSeed(newseed++);
     double ntrK = gRandom->Poisson(det->GetNChK());
     //printf("fNChK=%f ntrK=%f\n", det->GetNChK(), ntrK);
     
     for (int itr = 0; itr < ntrK; itr++){
-      //gRandom->SetSeed(newseed++);
+      gRandom->SetSeed(newseed++);
       yrap = fdNdYK->GetRandom();
       pt = fdNdPtK->GetRandom();
       phi = gRandom->Rndm() * TMath::Pi() * 2;
@@ -241,11 +242,11 @@ void runBkgVT(Int_t nevents = 5,
     }
     
     // protons
-    //gRandom->SetSeed(newseed++);
+    gRandom->SetSeed(newseed++);
     double ntrP = gRandom->Poisson(det->GetNChP());
     //printf("fNChP=%f ntrP=%f\n", det->GetNChP(), ntrP);
     for (int itr = 0; itr < ntrP; itr++){
-      //gRandom->SetSeed(newseed++);
+      gRandom->SetSeed(newseed++);
       yrap = fdNdYP->GetRandom();
       pt = fdNdPtP->GetRandom();
       //std::cout<<"pt: "<<pt<<" y: "<<yrap<<std::endl;

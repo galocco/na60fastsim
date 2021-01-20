@@ -852,7 +852,7 @@ void MakeCombinBkgCandidates3Body(const char* trackTreeFile="treeBkgEvents.root"
   
   TDatime dt;
   static UInt_t seed = dt.Get();
-  gRandom->SetSeed(seed);
+  gRandom->SetSeed(0);
 
   TFile *fout = new TFile(Form("Bkg-histos%s.root",suffix.Data()), "recreate");
   TH1D* hPtRecoAll = new TH1D("hPtRecoAll", "Pt all match", 50, 0., 5.);
