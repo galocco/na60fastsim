@@ -84,6 +84,11 @@ KMCProbeFwd* KMCLayerFwd::GetWinnerMCTrack()
   if (!fTrMC.IsSorted()) fTrMC.Sort();
   KMCProbeFwd* win = fTrMC.GetEntries() ? (KMCProbeFwd*)fTrMC[0]:0;
   if (!win || win->IsKilled()) return 0;
+  /*
+
+  if (!win}{std::cout<<"no win\n"; return 0;}
+  if(win->IsKilled()){std::cout<<"killed\n"; return 0;}
+  */
   return win;
 }
 

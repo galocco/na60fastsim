@@ -807,7 +807,7 @@ Bool_t KMCDetectorFwd::SolveSingleTrackViaKalman(double pt, double yrap, double 
   float pz = mt * TMath::SinH(yrap);
   float theta = TMath::ACos(pt/TMath::Sqrt(pt*pt+pz*pz));
   float thet = TMath::ASin(1/TMath::Sqrt(1+(fMM/fMPt)*(fMM/fMPt)*TMath::SinH(fMY)*TMath::SinH(fMY)));
-  float ymod = TMath::ACosH(theta/mt);
+
   fHhitITSvsYRap->Fill(fMY,nhITS);
   fHhitITSvsTheta->Fill(thet,nhITS);
   if(fCounter>0){

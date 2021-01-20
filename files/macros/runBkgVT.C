@@ -35,7 +35,7 @@ TDatime dt;
 
 void runBkgVT(Int_t nevents = 5, 
 	      double Eint = 160.,//"../setups/setup_EHN1-H8_short_10pixel_1.5T_BB.txt",/
-	      const char *setup = "../setups/setup_short_5pixel_1.5T.txt",
+	      const char *setup = "../setups/setup-EHN1_BetheBloch.txt",
         TString suffix = "_layer5",
 	      bool simulateBg=kTRUE,
         int minITSHits = 5)
@@ -43,7 +43,7 @@ void runBkgVT(Int_t nevents = 5,
 
   int refreshBg = 100;
   static UInt_t seed = dt.Get();
-  gRandom->SetSeed(seed);
+  gRandom->SetSeed(10);//seed);
   //gSystem->Setenv("PYTHIA8DATA", gSystem->ExpandPathName("$ALICE_ROOT/PYTHIA8/pythia8210/xmldoc")); // check if pythia8 path is set correctly !!!!
   
   TH2F *hResPy = new TH2F("hResPy", ";#it{p}_{ygen}-#it{p}_{yrec} (GeV/#it{c});#it{p}_{T} (GeV/#it{c});counts", 25, -0.001, 0.001, 30, 0, 3);
@@ -242,6 +242,7 @@ void runBkgVT(Int_t nevents = 5,
     for (int itr = 0; itr < ntrP; itr++){
       yrap = fdNdYP->GetRandom();
       pt = fdNdPtP->GetRandom();
+      //std::cout<<"pt: "<<pt<<" y: "<<yrap<<std::endl;
       phi = gRandom->Rndm() * TMath::Pi() * 2;
       charge = 1;
       mass = KMCDetectorFwd::kMassP;
@@ -266,6 +267,7 @@ void runBkgVT(Int_t nevents = 5,
         hGenStat->Fill(16);
         continue;
       }
+
       trw3->GetPXYZ(pxyz);
       //hResPy->Fill(pxyz[1]-py,pp->Pt());
       //printf("charge = %d, %f \n", charge, trw3->GetCharge());

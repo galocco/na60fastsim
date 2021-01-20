@@ -82,6 +82,7 @@ void runBkgVT(Int_t nevents = 5,
 	      const char *setup = "../setups/setup-EHN1_BetheBloch.txt",
         TString suffix = "_layer5",
 	      bool simulateBg=kTRUE,
+        int pdg_target = 310,
         int minITSHits = 5)
 {
 
@@ -199,6 +200,20 @@ void runBkgVT(Int_t nevents = 5,
   TClonesArray &aarrtr = *arrtr;
   tree->Branch("tracks", &arrtr);
   
+
+  Double_t charge = 0;
+  Double_t yrap = 0;
+  Double_t pt = 0;
+  Double_t phi = 0;
+  Double_t pxGen = 0;
+  Double_t pyGen = 0;
+  Double_t mt = 0;
+  Double_t pzGen = 0;
+  Double_t en = 0;
+  Double_t mass = 0;
+  Double_t multiplicity = 0;
+  Double_t ntrack = 0;
+  
   for (Int_t iev = 0; iev < nevents; iev++){
     aarrtr.Clear();
     printf(" ***************  ev = %d \n", iev);
@@ -207,30 +222,37 @@ void runBkgVT(Int_t nevents = 5,
     if (simulateBg && (iev % refreshBg) == 0)
       det->GenBgEvent(vX, vY, vZ);
 
-    for (auto &pdg_mom: pdg_mother){
+    Int_t icount = 0;
+    //if(false)
+    for (int im = 0; im < NParticles; im++){
+      int pdg_mom = pdg_mother[im];
+      if(pdg_target==pdg_mom)
+        continue;
+      printf(" ***************  pdg = %d \n", pdg_mom);
 
 
-      Double_t mass = TDatabasePDG::Instance()->GetParticle(pdg_mom)->Mass();
-      Double_t multiplicity = GetMultiplicity(pdg_mom,Eint,true)+GetMultiplicity(pdg_mom,Eint,false);
-      Double_t ntrack = gRandom->Poisson(multiplicity);
+      mass = TDatabasePDG::Instance()->GetParticle(pdg_mom)->Mass();
+      multiplicity = GetMultiplicity(pdg_mom,Eint,true)+GetMultiplicity(pdg_mom,Eint,false);
+      ntrack = gRandom->Poisson(multiplicity);
+      //std::cout<<"ntrack: "<<ntrack<<std::endl;
 
 
-      Int_t icount = 0;
       for (int itr = 0; itr < ntrack; itr++){
-        Double_t yrap = fpt->GetRandom();
-        Double_t pt = fy->GetRandom();
-        Double_t phi = gRandom->Rndm() * TMath::Pi() * 2;
-        Double_t charge = gRandom->Rndm() > GetMultiplicity(pdg_mom,Eint,false)/multiplicity ? 1 : -1;
-        Double_t pxGen = pt * TMath::Cos(phi);
-        Double_t pyGen = pt * TMath::Sin(phi);
-        Double_t mt = TMath::Sqrt(pt * pt + mass * mass);
-        Double_t pzGen = mt * TMath::SinH(yrap);
-        Double_t en = mt * TMath::CosH(yrap);
-
+        //printf(" ***************  trk = %d \n", itr);
+        charge = gRandom->Rndm() > GetMultiplicity(pdg_mom,Eint,false)/multiplicity ? 1 : -1;
         fpt->SetParameter(0,mass);
         fpt->SetParameter(1,GetTslope(pdg_mom,Eint,charge==1)/1000);
         fy->SetParameter(0,GetY0Rapidity(pdg_mom,Eint,charge==1));
         fy->SetParameter(1,GetSigmaRapidity(pdg_mom,Eint,charge==1));
+        yrap = fpt->GetRandom();
+        pt = fy->GetRandom();
+        phi = gRandom->Rndm() * TMath::Pi() * 2;
+        pxGen = pt * TMath::Cos(phi);
+        pyGen = pt * TMath::Sin(phi);
+        mt = TMath::Sqrt(pt * pt + mass * mass);
+        pzGen = mt * TMath::SinH(yrap);
+        en = mt * TMath::CosH(yrap);
+
 
         TClonesArray *particles = new TClonesArray("TParticle", 1000);
         TLorentzVector *mom = new TLorentzVector();
@@ -245,9 +267,13 @@ void runBkgVT(Int_t nevents = 5,
         hGenStat->Fill(1);
 
         // loop on decay products
+        //printf(" ***************  nptot = %d \n", np);
         for (int i = 0; i < np; i++) {
+
           TParticle *iparticle = (TParticle *)particles->At(i);
           Int_t kf = iparticle->GetPdgCode();
+          if(kf == 22) continue;
+          //printf(" ***************  np = %d pdg = %d\n", i, kf);
           vX = iparticle->Vx();
           vY = iparticle->Vy();
           vZ = iparticle->Vz();
@@ -273,11 +299,105 @@ void runBkgVT(Int_t nevents = 5,
           if(trw->GetNFakeITSHits()>0) hGenStat->Fill(6);
           icount++;
         }
-
-        icount++;
       }
-      printf("Background in array = %d out of %.0f \n",icount,ntrack);
     }
+
+    double ntrPi = gRandom->Poisson(det->GetNChPi());
+    //printf("fNChPi=%f ntrPi=%f\n", det->GetNChPi(), ntrPi);
+
+    printf(" ***************  pdg = pion \n");
+
+    for (int itr = 0; itr < ntrPi; itr++){	
+      yrap = fdNdYPi->GetRandom();
+      pt = fdNdPtPi->GetRandom();
+      phi = gRandom->Rndm() * TMath::Pi() * 2;
+      charge = gRandom->Rndm() > 0.52 ? 1 : -1;
+      mass = KMCDetectorFwd::kMassPi;
+      h3DPiBkg->Fill(pt, yrap, phi);
+      double pxyz[3] = {pt * TMath::Cos(phi), pt * TMath::Sin(phi), TMath::Sqrt(pt * pt + mass * mass) * TMath::SinH(yrap)};
+
+
+      TLorentzVector *ppi = new TLorentzVector(0., 0., 0., 0.);
+      ppi->SetXYZM(pxyz[0], pxyz[1], pxyz[2], mass);
+      double py= pxyz[1];
+      if (!det->SolveSingleTrack(ppi->Pt(), ppi->Rapidity(), ppi->Phi(), mass, charge, vX, vY, vZ, 0, 1, 99))
+        continue;
+        
+      KMCProbeFwd *trw = det->GetLayer(0)->GetWinnerMCTrack();
+      if (!trw){
+        continue;
+      }
+      if (trw->GetNormChi2(kTRUE) > ChiTot){
+        continue;
+      }
+      new (aarrtr[icount]) KMCProbeFwd(*trw);
+      icount++;
+    }
+
+    // kaons
+    double ntrK = gRandom->Poisson(det->GetNChK());
+    //printf("fNChK=%f ntrK=%f\n", det->GetNChK(), ntrK);
+    
+    printf(" ***************  pdg = kaon \n");
+    for (int itr = 0; itr < ntrK; itr++){
+      yrap = fdNdYK->GetRandom();
+      pt = fdNdPtK->GetRandom();
+      phi = gRandom->Rndm() * TMath::Pi() * 2;
+      charge = gRandom->Rndm() > 0.3 ? 1 : -1;
+      mass = KMCDetectorFwd::kMassK;
+      h3DKBkg->Fill(pt, yrap, phi);
+      double pxyz[3] = {pt * TMath::Cos(phi), pt * TMath::Sin(phi), TMath::Sqrt(pt * pt + mass * mass) * TMath::SinH(yrap)};
+      
+      TLorentzVector *pk = new TLorentzVector(0., 0., 0., 0.);
+      pk->SetXYZM(pxyz[0], pxyz[1], pxyz[2], mass);
+      double py= pxyz[1];
+      if (!det->SolveSingleTrack(pk->Pt(), pk->Rapidity(), pk->Phi(), mass, charge, vX, vY, vZ, 0, 1, 99))
+        continue;
+      
+      KMCProbeFwd *trw2 = det->GetLayer(0)->GetWinnerMCTrack();
+      if (!trw2){
+        continue;
+      }
+      if (trw2->GetNormChi2(kTRUE) > ChiTot){
+        continue;
+      }
+      new (aarrtr[icount]) KMCProbeFwd(*trw2);
+      icount++;
+    }
+    
+    // protons
+    double ntrP = gRandom->Poisson(det->GetNChP());
+
+    printf(" ***************  pdg = proton \n");
+    //printf("fNChP=%f ntrP=%f\n", det->GetNChP(), ntrP);
+    for (int itr = 0; itr < ntrP; itr++){
+      yrap = fdNdYP->GetRandom();
+      pt = fdNdPtP->GetRandom();
+      phi = gRandom->Rndm() * TMath::Pi() * 2;
+      charge = 1;
+      mass = KMCDetectorFwd::kMassP;
+      h3DPBkg->Fill(pt, yrap, phi);
+      double pxyz[3] = {pt * TMath::Cos(phi), pt * TMath::Sin(phi), TMath::Sqrt(pt * pt + mass * mass) * TMath::SinH(yrap)};
+      
+      TLorentzVector *pp = new TLorentzVector(0., 0., 0., 0.);
+      pp->SetXYZM(pxyz[0], pxyz[1], pxyz[2], mass);
+      double py= pxyz[1];
+
+      if (!det->SolveSingleTrack(pp->Pt(), pp->Rapidity(), pp->Phi(), mass, charge, vX, vY, vZ, 0, 1, 99))
+        continue;
+      
+      KMCProbeFwd *trw3 = det->GetLayer(0)->GetWinnerMCTrack();
+      if (!trw3){
+        continue;
+      }
+      if (trw3->GetNormChi2(kTRUE) > ChiTot){
+        continue;
+      }
+      new (aarrtr[icount]) KMCProbeFwd(*trw3);
+      icount++;
+    }
+
+    //printf("Background in array = %d out of %.0f \n",icount,ntrack);
     tree->Fill();
   }
   f->cd();
