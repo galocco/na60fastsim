@@ -34,16 +34,16 @@ double vX = 0, vY = 0, vZ = 0; // event vertex
 TDatime dt;
 
 void runBkgVT(Int_t nevents = 5, 
-	      double Eint = 158.,//"../setups/setup_EHN1-H8_short_10pixel_1.5T_BB.txt",/
-	      const char *setup = "../setups/setup-EHN1_BetheBloch.txt",
-        TString suffix = "_layer5",
+	      double Eint = 158.,//"../setups/setup-EHN1_BetheBloch.txt"
+	      const char *setup = "../setups/setup_EHN1-H8_short_10pixel_1.5T_BB.txt",
+        TString suffix = "_layer10",
 	      bool simulateBg=kTRUE,
         int minITSHits = 5)
 {
 
   int refreshBg = 100;
   static UInt_t seed = dt.Get();
-  gRandom->SetSeed(10);//seed);
+  gRandom->SetSeed(seed);
   //gSystem->Setenv("PYTHIA8DATA", gSystem->ExpandPathName("$ALICE_ROOT/PYTHIA8/pythia8210/xmldoc")); // check if pythia8 path is set correctly !!!!
   
   TH2F *hResPy = new TH2F("hResPy", ";#it{p}_{ygen}-#it{p}_{yrec} (GeV/#it{c});#it{p}_{T} (GeV/#it{c});counts", 25, -0.001, 0.001, 30, 0, 3);

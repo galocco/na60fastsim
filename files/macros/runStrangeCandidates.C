@@ -123,6 +123,27 @@ void GenerateSignalCandidates(Int_t nevents = 100000,
 
   int count1=0,count2=0,count3=0;
 
+
+  //Magnetic field and detector parameters
+  MagField *mag = new MagField(1);
+  int BNreg = mag->GetNReg();
+  const double *BzMin = mag->GetZMin();
+  const double *BzMax = mag->GetZMax();
+  const double *BVal;
+  printf("*************************************\n");
+  printf("number of magnetic field regions = %d\n", BNreg);
+
+  
+  for (int i = 0; i < BNreg; i++){
+    BVal = mag->GetBVals(i);
+    printf("*** Field region %d ***\n", i);
+    if (i == 0){
+      printf("Bx = %f B = %f Bz = %f zmin = %f zmax = %f\n", BVal[0], BVal[1], BVal[2], BzMin[i], BzMax[i]);
+    }else if (i == 1){
+      printf("B = %f Rmin = %f Rmax = %f zmin = %f zmax = %f\n", BVal[0], BVal[1], BVal[2], BzMin[i], BzMax[i]);
+    }
+  }
+
   KMCDetectorFwd *det = new KMCDetectorFwd();
   det->ReadSetup(setup, setup);
   det->InitBkg(Eint);
@@ -830,11 +851,14 @@ void GenerateSignalCandidates(Int_t nevents = 100000,
 
 void MakeCombinBkgCandidates3Body(const char* trackTreeFile="treeBkgEvents.root",
              TString suffix = "_Omega",
+             const char *setup = "../setups/setup_short_5pixel_1.5T.txt",
 			       Int_t nevents = 999999, 
 			       Int_t writeNtuple = kFALSE,
 			       Bool_t usePID=kFALSE,
              int pdgMother = 3334,
-             int pdg_unstable_dau = 3122){
+             int pdg_unstable_dau = 3122,
+             double Eint = 158.,
+             int minITSHits = 5){
 
   // Read the TTree of tracks produced with runBkgVT.C
   // Create combinatorial background candidates (= OS pairs of tracks)
@@ -853,6 +877,57 @@ void MakeCombinBkgCandidates3Body(const char* trackTreeFile="treeBkgEvents.root"
   TDatime dt;
   static UInt_t seed = dt.Get();
   gRandom->SetSeed(seed);
+
+  //Magnetic field and detector parameters
+  MagField *mag = new MagField(1);
+  int BNreg = mag->GetNReg();
+  const double *BzMin = mag->GetZMin();
+  const double *BzMax = mag->GetZMax();
+  const double *BVal;
+  printf("*************************************\n");
+  printf("number of magnetic field regions = %d\n", BNreg);
+  
+  
+  for (int i = 0; i < BNreg; i++){
+    BVal = mag->GetBVals(i);
+    printf("*** Field region %d ***\n", i);
+    if (i == 0){
+      printf("Bx = %f B = %f Bz = %f zmin = %f zmax = %f\n", BVal[0], BVal[1], BVal[2], BzMin[i], BzMax[i]);
+    }else if (i == 1){
+      printf("B = %f Rmin = %f Rmax = %f zmin = %f zmax = %f\n", BVal[0], BVal[1], BVal[2], BzMin[i], BzMax[i]);
+    }
+  }
+
+  KMCDetectorFwd *det = new KMCDetectorFwd();
+  det->ReadSetup(setup, setup);
+  det->InitBkg(Eint);
+  det->ForceLastActiveLayer(det->GetLastActiveLayerITS()); // will not propagate beyond VT
+  det->SetMinITSHits(minITSHits); //NA60+
+  //det->SetMinITSHits(det->GetNumberOfActiveLayersITS()-1); //NA60
+  det->SetMinMSHits(0); //NA60+
+  //det->SetMinMSHits(det->GetNumberOfActiveLayersMS()-1); //NA60
+  det->SetMinTRHits(0);
+  //
+  // max number of seed on each layer to propagate (per muon track)
+  det->SetMaxSeedToPropagate(3000);
+  //
+  // set chi2 cuts
+  det->SetMaxChi2Cl(10.);  // max track to cluster chi2
+  det->SetMaxChi2NDF(3.5); // max total chi2/ndf
+  det->SetMaxChi2Vtx(-20);  // fiducial cut on chi2 of convergence to vtx  
+  // IMPORTANT FOR NON-UNIFORM FIEL
+  det->SetDefStepAir(1);
+  det->SetMinP2Propagate(1); //NA60+
+  //det->SetMinP2Propagate(2); //NA60
+  //
+  //det->SetApplyBransonPCorrection(-1);
+  //det->SetApplyBransonPCorrection(3.); // kind of syst error on vertex position precision
+  det->SetIncludeVertex(kFALSE); // count vertex as an extra measured point
+  //  det->SetApplyBransonPCorrection();
+  det->ImposeVertex(0., 0., 0.);
+  //det->UseTrackOriginAsVertex();
+  det->BookControlHistos();
+
 
   TFile *fout = new TFile(Form("Bkg-histos%s.root",suffix.Data()), "recreate");
   TH1D* hPtRecoAll = new TH1D("hPtRecoAll", "Pt all match", 50, 0., 5.);
@@ -1116,10 +1191,13 @@ void MakeCombinBkgCandidates3Body(const char* trackTreeFile="treeBkgEvents.root"
 
 void MakeCombinBkgCandidates2Body(const char* trackTreeFile="treeBkgEvents_layer5.root",
              TString suffix = "_K0s",
+             const char *setup = "../setups/setup-EHN1_BetheBloch.txt",
 			       Int_t nevents = 999999, 
 			       Int_t writeNtuple = kTRUE,
              int pdgMother = 310,
-             bool matter = true){
+             bool matter = true, 
+             double Eint = 158.,
+             int minITSHits = 5){
 
   // Read the TTree of tracks produced with runBkgVT.C
   // Create D0 combinatorial background candidates (= OS pairs of tracks)
@@ -1138,6 +1216,55 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFile="treeBkgEvents_layer
   static UInt_t seed = dt.Get();
   gRandom->SetSeed(10);
 
+  //Magnetic field and detector parameters
+  MagField *mag = new MagField(1);
+  int BNreg = mag->GetNReg();
+  const double *BzMin = mag->GetZMin();
+  const double *BzMax = mag->GetZMax();
+  const double *BVal;
+  printf("*************************************\n");
+  printf("number of magnetic field regions = %d\n", BNreg);
+  
+  
+  for (int i = 0; i < BNreg; i++){
+    BVal = mag->GetBVals(i);
+    printf("*** Field region %d ***\n", i);
+    if (i == 0){
+      printf("Bx = %f B = %f Bz = %f zmin = %f zmax = %f\n", BVal[0], BVal[1], BVal[2], BzMin[i], BzMax[i]);
+    }else if (i == 1){
+      printf("B = %f Rmin = %f Rmax = %f zmin = %f zmax = %f\n", BVal[0], BVal[1], BVal[2], BzMin[i], BzMax[i]);
+    }
+  }
+  
+  KMCDetectorFwd *det = new KMCDetectorFwd();
+  det->ReadSetup(setup, setup);
+  det->InitBkg(Eint);
+  det->ForceLastActiveLayer(det->GetLastActiveLayerITS()); // will not propagate beyond VT
+  det->SetMinITSHits(minITSHits); //NA60+
+  //det->SetMinITSHits(det->GetNumberOfActiveLayersITS()-1); //NA60
+  det->SetMinMSHits(0); //NA60+
+  //det->SetMinMSHits(det->GetNumberOfActiveLayersMS()-1); //NA60
+  det->SetMinTRHits(0);
+  //
+  // max number of seed on each layer to propagate (per muon track)
+  det->SetMaxSeedToPropagate(3000);
+  //
+  // set chi2 cuts
+  det->SetMaxChi2Cl(10.);  // max track to cluster chi2
+  det->SetMaxChi2NDF(3.5); // max total chi2/ndf
+  det->SetMaxChi2Vtx(-20);  // fiducial cut on chi2 of convergence to vtx  
+  // IMPORTANT FOR NON-UNIFORM FIEL
+  det->SetDefStepAir(1);
+  det->SetMinP2Propagate(1); //NA60+
+  //det->SetMinP2Propagate(2); //NA60
+  //
+  //det->SetApplyBransonPCorrection(-1);
+  //det->SetApplyBransonPCorrection(3.); // kind of syst error on vertex position precision
+  det->SetIncludeVertex(kFALSE); // count vertex as an extra measured point
+  //  det->SetApplyBransonPCorrection();
+  det->ImposeVertex(0., 0., 0.);
+  //det->UseTrackOriginAsVertex();
+  det->BookControlHistos();
   
   TFile *fout = new TFile(Form("Bkg-histos%s.root",suffix.Data()), "recreate");
   TH1D* hPtRecoAll = new TH1D("hPtRecoAll", "Pt all match", 50, 0., 5.);
@@ -1192,7 +1319,7 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFile="treeBkgEvents_layer
   //read the pdg code of the daughters
   int pdg_dau[2] = {0,0};
   GetPDGDaughters(pdgMother,pdg_dau,matter);
-  bool swap_mass = pdg_dau[0]!=pdg_dau[1];
+  int iMassHypMax = pdg_dau[0]!=pdg_dau[1] ? 2 : 1;
   KMCProbeFwd recProbe[2];
   TLorentzVector parent, daurec[2];
   int icount = 0;
@@ -1221,33 +1348,16 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFile="treeBkgEvents_layer
           recProbe[1] = *tr1;
         }
 
-        Double_t pxyz[3];
-        recProbe[0].GetXYZ(pxyz);
         
-        Double_t pxyz2[3];
-        recProbe[1].GetXYZ(pxyz2);
+        for(Int_t iMassHyp=0; iMassHyp<iMassHypMax; iMassHyp++){
 
-        if(icount < 10){
-          printf("pair number %i\n",icount);
-          printf("track1 at z=0 ev x %f y %f z %f\n",pxyz[0],pxyz[1],pxyz[2]);
-          printf("track2 at z=0 ev x %f y %f z %f\n",pxyz2[0],pxyz2[1],pxyz2[2]);
-        }
-        recProbe[0].PropagateToZBxByBz(0.1);
-        recProbe[1].PropagateToZBxByBz(0.1);
-        recProbe[0].PropagateToDCA(&recProbe[1]);
-        recProbe[0].GetXYZ(pxyz);
-        recProbe[1].GetXYZ(pxyz2);
-        if(icount < 10){
-          printf("track1 at DCA ev x:%f y:%f z:%f\n",pxyz[0],pxyz[1],pxyz[2]);
-          printf("track2 at DCA ev x:%f y:%f z:%f\n",pxyz2[0],pxyz2[1],pxyz2[2]);
-        }
-
-        recProbe[0].GetXYZ(pxyz);
-        recProbe[1].GetXYZ(pxyz2);
-        recProbe[0].GetPXYZ(pxyz);
-        recProbe[1].GetPXYZ(pxyz2);
-	
-        for(Int_t iMassHyp=0; iMassHyp<1; iMassHyp++){
+          recProbe[0].PropagateToDCA(&recProbe[1]);
+          Double_t pxyz[3];
+          recProbe[0].GetXYZ(pxyz);
+          
+          Double_t pxyz2[3];
+          recProbe[1].GetXYZ(pxyz2);
+          
           Int_t iNeg=-1;
           if(iMassHyp==0){
             daurec[0].SetXYZM(pxyz[0], pxyz[1], pxyz[2], TDatabasePDG::Instance()->GetParticle(pdg_dau[1])->Mass());
@@ -1301,13 +1411,13 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFile="treeBkgEvents_layer
             hDist->Fill(dist);
             hDistz->Fill(zP);
             
-            //recProbe[0].PropagateToZBxByBz(0);
+            recProbe[0].PropagateToZBxByBz(0);
             Double_t d0x1 = recProbe[0].GetX();
             Double_t d0y1 = recProbe[0].GetY();
             Double_t d0xy1 = TMath::Sqrt(d0x1 * d0x1 + d0y1 * d0y1);
             if (d0x1 < 0) d0xy1 *= -1;
             
-            //recProbe[1].PropagateToZBxByBz(0);
+            recProbe[1].PropagateToZBxByBz(0);
             Double_t d0x2 = recProbe[1].GetX();
             Double_t d0y2 = recProbe[1].GetY();
             Double_t d0xy2 = TMath::Sqrt(d0x2 * d0x2 + d0y2 * d0y2);
