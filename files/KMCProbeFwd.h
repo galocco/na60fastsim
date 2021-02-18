@@ -35,6 +35,16 @@ class KMCProbeFwd: public TObject {
   //
   void      SetWeight(double w=1.)                      {fWeight = w;}
   void      SetMass(double m=0.14)                      {fMass = m;}
+  void      SetPdg(int pdg=211)                      {fPdg = pdg;}
+  void      SetPdgMother(int pdg=310)                      {fPdgMother = pdg;}
+  void      SetIndex(int index=0)                      {fIndex = index;}
+  void      SetIndexMom(int index=0)                      {fIndexMom = index;}
+  void      SetIsFromPrim(bool prim=true)                      {fIsFromPrim = prim;}
+  Bool_t    GetIsFromPrim()                              {return fIsFromPrim;}
+  Int_t     GetIndexMom()                              {return fIndexMom;}
+  Int_t     GetIndex()                              {return fIndex;}
+  Int_t     GetPdg()                              {return fPdg;}
+  Int_t     GetPdgMother()                              {return fPdgMother;}
   Double_t  GetMass()                             const {return fMass;}
   Double_t  GetWeight()                           const {return fWeight;}
   Double_t  GetChi2()                             const {return fChi2;}
@@ -114,6 +124,11 @@ class KMCProbeFwd: public TObject {
  protected:
   Double_t fWeight; // weight (for decay?)
   Double_t fMass;   // particle mass
+  Int_t    fPdg; // pdg value of the particle
+  Int_t    fPdgMother; // pdg value of the mother (0 if it is primary)
+  Int_t    fIndex; // n-th pdg-particle in a event
+  Int_t    fIndexMom; // 
+  Bool_t   fIsFromPrim; // is the particle from a primary particle?
   Double_t fChi2;   // total chi2
   Double_t fChi2ITS;// total chi2 ITS
   Float_t  fMSX2X0Seen; // materal X/X0 seen between MS chambers

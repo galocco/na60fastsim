@@ -12,6 +12,11 @@ Double_t KMCProbeFwd::fgMissingHitPenalty = 2.;
 KMCProbeFwd::KMCProbeFwd() 
   :fWeight(1) 
   ,fMass(0.10566)
+  ,fPdg(0)
+  ,fPdgMother(0)
+  ,fIndex(0)
+  ,fIndexMom(0)
+  ,fIsFromPrim(true)
   ,fChi2(0)
   ,fChi2ITS(0)
   ,fMSX2X0Seen(0)
@@ -31,6 +36,11 @@ KMCProbeFwd::KMCProbeFwd()
 KMCProbeFwd::KMCProbeFwd(double *xyz, double *pxyz, Int_t sign, double errLoose) 
   :fWeight(1) 
   ,fMass(0.10566)
+  ,fPdg(0)
+  ,fPdgMother(0)
+  ,fIndex(0)
+  ,fIndexMom(0)
+  ,fIsFromPrim(true)
   ,fChi2(0)
   ,fChi2ITS(0)
   ,fMSX2X0Seen(0)
@@ -58,6 +68,11 @@ KMCProbeFwd::KMCProbeFwd(const KMCProbeFwd& src)
 :  TObject(src)
   ,fWeight(src.fWeight)
   ,fMass(src.fMass)
+  ,fPdg(src.fPdg)
+  ,fPdgMother(src.fPdgMother)
+  ,fIndex(src.fIndex)
+  ,fIndexMom(src.fIndexMom)
+  ,fIsFromPrim(src.fIsFromPrim)
   ,fChi2(src.fChi2)
   ,fChi2ITS(src.fChi2ITS)
   ,fMSX2X0Seen(src.fMSX2X0Seen)
@@ -81,6 +96,11 @@ KMCProbeFwd& KMCProbeFwd::operator=(const KMCProbeFwd& src)
   this->TObject::operator=(src);
   fWeight = src.fWeight;
   fMass = src.fMass;
+  fPdg = src.fPdg;
+  fPdgMother = src.fPdgMother;
+  fIndex = src.fIndex;
+  fIndexMom = src.fIndexMom;
+  fIsFromPrim = src.fIsFromPrim;
   fChi2 = src.fChi2;
   fChi2ITS = src.fChi2ITS;
   fMSX2X0Seen = src.fMSX2X0Seen;
@@ -102,6 +122,11 @@ void KMCProbeFwd::Reset()
 {
   fWeight = 1.;
   fMass=0.14; 
+  fPdg=0; 
+  fPdgMother=0; 
+  fIndex=0; 
+  fIndexMom=0; 
+  fIsFromPrim=true; 
   fChi2=0; 
   fChi2ITS=0;
   fMSX2X0Seen = 0;

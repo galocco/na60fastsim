@@ -36,7 +36,7 @@ double yminSG = -2.;
 double ymaxSG = 8.;
 // pT range
 double ptminSG = 0.;
-double ptmaxSG = 3.;
+double ptmaxSG = 4.;
 // event vertex
 double vX = 0, vY = 0, vZ = 0;
 //number of energy of the colliding beam
@@ -86,9 +86,11 @@ void runFullSim(Int_t nevents = 5,
 	      const char *setup = "../setups/setup-EHN1_BetheBloch.txt",
         TString suffix = "_layer5_new",
 	      bool simulateBg=kFALSE,
-        int minITSHits = 5)
+        int minITSHits = 5,
+        bool only_prompt = true)
 {
 
+  double y0 = GetY0(Eint);
   int refreshBg = 100;
   static UInt_t seed = dt.Get();
   gRandom->SetSeed(seed);
@@ -100,12 +102,16 @@ void runFullSim(Int_t nevents = 5,
   AliDecayerEvtGen *fDecayer = new AliDecayerEvtGen();
   fDecayer->Init(); //read the default decay table DECAY.DEC and particle table
   printf("-- Use existing decay modes in aliroot\n");
+  //fDecayer->SetDecayTablePath("../decaytables/USERTABPHI.DEC");
+  //fDecayer->ReadDecayTable();
   fDecayer->SetForceDecay(kHadronicD); 
   TH1F *hNevents = new TH1F("hNevents", "", 1, 0, 1);
   TH1D *hPDGSaved = new TH1D("hPDGSaved",";PDG code; entries",20000,-10000.5,10000.5);
   TH1D *hPDGSurv1 = new TH1D("hPDGSurv1",";PDG code; entries",20000,-10000.5,10000.5);
   TH1D *hPDGSurv2 = new TH1D("hPDGSurv2",";PDG code; entries",20000,-10000.5,10000.5);
   TH1D *hPDGGen = new TH1D("hPDGGen",";PDG code; entries",20000,-10000.5,10000.5);
+  TH1F *hNPartRec = new TH1F("hNPartRec","",1,0,1);
+  TH1F *hNPartGen = new TH1F("hNPartGen","",1,0,1);
 
   KMCDetectorFwd *det = new KMCDetectorFwd();
   printf("Setup file = %s\n",setup);
@@ -172,6 +178,9 @@ void runFullSim(Int_t nevents = 5,
   TF1 *fpt = new TF1("fpt","x*exp(-TMath::Sqrt(x**2+[0]**2)/[1])",ptminSG,ptmaxSG);
   TF1 *fy = new TF1("fy","exp(-0.5*((x-[0])/[1])**2)+exp(-0.5*((x+[0])/[1])**2) ",-10,10);
 
+  TF1 *fm = new TF1("fm","1/((x*x-[0]*[0])*(x*x-[0]*[0])*[2]+([0]*[1])*([0]*[1]))");
+  fm->SetParameter(2,TMath::Power(TMath::C(),4));
+
   TFile *f = new TFile(Form("treeBkgEvents%s.root",suffix.Data()), "RECREATE");
   TTree *tree = new TTree("tree", "tree Bkg");
   TClonesArray *arrtr = new TClonesArray("KMCProbeFwd");
@@ -189,6 +198,8 @@ void runFullSim(Int_t nevents = 5,
   Double_t pzGen = 0;
   Double_t en = 0;
   Double_t mass = 0;
+  Double_t massbw = 0;
+  Double_t lifetime = 0;
   Double_t multiplicity = 0;
   Int_t ntrack = 0;
 
@@ -204,7 +215,7 @@ void runFullSim(Int_t nevents = 5,
     printf(" ***************  ev = %d \n", iev);
     hNevents->Fill(0.5);
     if (simulateBg && (iev % refreshBg) == 0){
-      det->GenBgEvent(vX, vY, vZ);
+      det->GenBgEvent(0, 0, 0);
     }
 
     Int_t icount = 0;
@@ -305,11 +316,17 @@ void runFullSim(Int_t nevents = 5,
       new (aarrtr[icount]) KMCProbeFwd(*trw);
       icount++;
     }
-
+    if(!only_prompt)
     for (int im = 0; im < NParticles; im++){
       int pdg_mom = pdg_mother[im];
-
       mass = TDatabasePDG::Instance()->GetParticle(pdg_mom)->Mass();
+      lifetime = TDatabasePDG::Instance()->GetParticle(pdg_mom)->Lifetime();
+      if(lifetime==0)
+        lifetime = TMath::Power(8.59,-11);
+      fm->SetRange(mass*0.9,mass*1.1);
+      fm->SetParameter(0,mass);
+      fm->SetParameter(1,TMath::Hbar()*6.242*TMath::Power(10,9)/(lifetime));
+
       multiplicity = GetMultiplicity(pdg_mom,Eint,true)+GetMultiplicity(pdg_mom,Eint,false);
       ntrack = gRandom->Poisson(multiplicity);
 
@@ -319,12 +336,13 @@ void runFullSim(Int_t nevents = 5,
         fpt->SetParameter(1,GetTslope(pdg_mom,Eint,charge==1)/1000);
         fy->SetParameter(0,GetY0Rapidity(pdg_mom,Eint,charge==1));
         fy->SetParameter(1,GetSigmaRapidity(pdg_mom,Eint,charge==1));
-        yrap = fpt->GetRandom();
-        pt = fy->GetRandom();
+        yrap = fy->GetRandom()+y0;
+        pt = fpt->GetRandom();
+        massbw = fm->GetRandom();
         phi = gRandom->Rndm() * TMath::Pi() * 2;
         pxGen = pt * TMath::Cos(phi);
         pyGen = pt * TMath::Sin(phi);
-        mt = TMath::Sqrt(pt * pt + mass * mass);
+        mt = TMath::Sqrt(pt * pt + massbw * massbw);
         pzGen = mt * TMath::SinH(yrap);
         en = mt * TMath::CosH(yrap);
 
@@ -338,42 +356,35 @@ void runFullSim(Int_t nevents = 5,
           np = fDecayer->ImportParticles(particles);
         } while (np < 0);
         // loop on decay products
+        int pair = 0;
         for (int i = 0; i < np; i++) {
 
           TParticle *iparticle = (TParticle *)particles->At(i);
           Int_t kf = iparticle->GetPdgCode();
           index_list[GetArrayPosition(kf)]++;
           hPDGGen->Fill(kf);
-          //if(pdg_mom==333)
-          //std::cout<<"pdg: "<<kf<<" q:"<<TDatabasePDG::Instance()->GetParticle(kf)->Charge()<<std::endl;
-          if(kf == 22 || kf==89 || TDatabasePDG::Instance()->GetParticle(kf)->Charge()==0) continue;
+          if(kf==89 || TDatabasePDG::Instance()->GetParticle(kf)->Charge()==0) continue;
+          pair++;
           vX = iparticle->Vx();
           vY = iparticle->Vy();
           vZ = iparticle->Vz();
           Int_t crg= (iparticle->GetPdgCode()>0) ? 1 : -1;
           TLorentzVector *partVector = new TLorentzVector(0., 0., 0., 0.);
           partVector->SetXYZM(iparticle->Px(), iparticle->Py(), iparticle->Pz(), iparticle->GetMass());
-          //if(pdg_mom==310)
+          //if(pdg_mom==333)
           //std::cout<<"vX: "<<vX<<" vY: "<<vY<<" vZ: "<<vZ<<std::endl;
           if (!det->SolveSingleTrack(partVector->Pt(), partVector->Rapidity(), partVector->Phi(), iparticle->GetMass(), crg, vX, vY, vZ, 0, 1, 99)){  
             continue;
           }
 
-          if(pdg_mom==310)
-            hPDGSurv1->Fill(kf);
           KMCProbeFwd *trw = det->GetLayer(0)->GetWinnerMCTrack();
           if (!trw){
             continue;
           }
 
-          if(pdg_mom==310)
-            hPDGSurv2->Fill(kf);
           if (trw->GetNormChi2(kTRUE) > ChiTot){
             continue;
           }
-          if(pdg_mom==310)
-            hPDGSaved->Fill(kf);
-          //trw->GetIsFromPrim(kf);
           trw->SetIndex(index_list[GetArrayPosition(kf)]);
           trw->SetIndexMom(index_list[GetArrayPosition(pdg_mom)]);
           trw->SetPdgMother((kf==pdg_mom) ? 0:pdg_mom);
@@ -392,9 +403,11 @@ void runFullSim(Int_t nevents = 5,
   f->Close();
   
   TFile *outfile = new TFile(Form("bkgdistributions%s.root",suffix.Data()), "recreate");
-  
+  hNPartRec->Divide(hNPartGen);
+
   outfile->cd();
   hNevents->Write();
+  hNPartRec->Write();
   hPDGSaved->Write();
   hPDGSurv1->Write();
   hPDGSurv2->Write();

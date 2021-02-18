@@ -60,7 +60,7 @@ double Elab[NEnergy] = {20,30,40,80,158};
 
 //T parameter in the exponential pT distribution [matter/antimatter][particle][beam energy] i
 //                                                    phi                        K               Lambda                Omega                    Csi
-double Tslope[2][NParticles][NEnergy] = {{{196.8,237.4,244.6,239.8,298.7},{0,0,228.9, 223.1, 228.9},{244,249,258,265,301},{0,0,218,0,267},{221,233,222,227,277}},//matter e rapidity distribution [matter/antimatter][particle][beam energy]
+double Tslope[2][NParticles][NEnergy] = {{{196.8,237.4,244.6,239.8,298.7},{0,0,(228.9+226)/2., 223.1, 228.9},{244,249,258,265,301},{0,0,218,0,267},{221,233,222,227,277}},//matter e rapidity distribution [matter/antimatter][particle][beam energy]
                                          {{196.8,237.4,244.6,239.8,298.7},{0,0,226,217,226},{339,284,301,292,303},{0,0,218,0,259},{311,277,255,321,0}}};//antimatter
 //sigma parameter of the gaussians of th                    phi                        K                       Lambda                Omega                    Csi
 double sigma_rapidity[2][NParticles][NEnergy] = {{{0.425,0.538,0.696,0.658,1.451},{0,0,0.674, 0.743, 0.84},{0.51,0.66,0.91,0.87,0},{0,0,0.6,0,1.2},{0.45,0.56,0.76,0.71,1.18}},//matter
@@ -90,13 +90,14 @@ void GetPDGDaughters(int pdgParticle,int pdgDaughters[], bool matter);
 Double_t KFVertexer(AliExternalTrackParam kTrack [], Double_t kMasses[], int n_dau, float bz);
 Double_t O2Vertexer(AliExternalTrackParam kTrack[], Double_t kMasses[], int n_dau, float bz);
 void GenerateSignalCandidates(Int_t nevents = 100000, 
-				double Eint = 158, 
-        TString suffix = "_K0s",
+				double Eint = 40, 
+        TString suffix = "_phi_test",
 				const char *setup = "../setups/setup-EHN1_BetheBloch.txt",
-				const char *privateDecayTable = "../decaytables/USERTABK0.DEC",
+				const char *privateDecayTable = "../decaytables/USERTABPHI.DEC",
 				bool writeNtuple = kTRUE, 
+				bool writeNtuplGen = kTRUE, 
 				bool simulateBg=kFALSE,
-        int pdgParticle = 310,
+        int pdgParticle = 333,
         int nbody = 2,
         int pdg_unstable_dau = 0,
         bool matter = true,
@@ -113,36 +114,24 @@ void GenerateSignalCandidates(Int_t nevents = 100000,
   
   //define the pT and rapidity probability function
   Double_t mass = TDatabasePDG::Instance()->GetParticle(pdgParticle)->Mass();
+  Double_t lifetime = TDatabasePDG::Instance()->GetParticle(pdgParticle)->Lifetime();
+  if(lifetime==0)
+    lifetime = TMath::Power(8.59,-11);
   TF1 *fpt = new TF1("fpt","x*exp(-TMath::Sqrt(x**2+[0]**2)/[1])",ptminSG,ptmaxSG);
   fpt->SetParameter(0,mass);
   fpt->SetParameter(1,GetTslope(pdgParticle,Eint,matter)/1000);
   TF1 *fy = new TF1("fy","exp(-0.5*((x-[0])/[1])**2)+exp(-0.5*((x+[0])/[1])**2) ",-10,10);
   fy->SetParameter(0,GetY0Rapidity(pdgParticle,Eint,matter));
   fy->SetParameter(1,GetSigmaRapidity(pdgParticle,Eint,matter));
+  TF1 *fm = new TF1("fm","1/((x*x-[0]*[0])*(x*x-[0]*[0])*[2]+([0]*[1])*([0]*[1]))",mass*0.8,mass*1.2);
+  fm->SetParameter(0,mass);
+  fm->SetParameter(1,TMath::Hbar()*6.242*TMath::Power(10,9)/(lifetime));
+  fm->SetParameter(2,TMath::Power(TMath::C(),4));
   TFile *fout = new TFile(Form("Signal_histos%s.root",suffix.Data()), "recreate");
+  TH1D* hCentrality = new TH1D("hCentrality", ";centrality;counts", 100, 0, 100);
 
   int count1=0,count2=0,count3=0;
 
-
-  //Magnetic field and detector parameters
-  MagField *mag = new MagField(1);
-  int BNreg = mag->GetNReg();
-  const double *BzMin = mag->GetZMin();
-  const double *BzMax = mag->GetZMax();
-  const double *BVal;
-  printf("*************************************\n");
-  printf("number of magnetic field regions = %d\n", BNreg);
-
-  
-  for (int i = 0; i < BNreg; i++){
-    BVal = mag->GetBVals(i);
-    printf("*** Field region %d ***\n", i);
-    if (i == 0){
-      printf("Bx = %f B = %f Bz = %f zmin = %f zmax = %f\n", BVal[0], BVal[1], BVal[2], BzMin[i], BzMax[i]);
-    }else if (i == 1){
-      printf("B = %f Rmin = %f Rmax = %f zmin = %f zmax = %f\n", BVal[0], BVal[1], BVal[2], BzMin[i], BzMax[i]);
-    }
-  }
 
   KMCDetectorFwd *det = new KMCDetectorFwd();
   det->ReadSetup(setup, setup);
@@ -173,6 +162,27 @@ void GenerateSignalCandidates(Int_t nevents = 100000,
   det->ImposeVertex(0., 0., 0.);
   //det->UseTrackOriginAsVertex();
   det->BookControlHistos();
+  
+  TVirtualMagField* fld = TGeoGlobalMagField::Instance()->GetField();
+  if (fld->IsA() == MagField::Class()) {
+    MagField* mag = (MagField*) fld;
+    int BNreg = mag->GetNReg();
+    const double *BzMin = mag->GetZMin();
+    const double *BzMax = mag->GetZMax();
+    const double *BVal;
+    printf("*************************************\n");
+    printf("number of magnetic field regions = %d\n", BNreg);
+    for (int i = 0; i < BNreg; i++){
+      BVal = mag->GetBVals(i);
+      printf("*** Field region %d ***\n", i);
+      if (i == 0){
+	printf("Bx = %f B = %f Bz = %f zmin = %f zmax = %f\n", BVal[0], BVal[1], BVal[2], BzMin[i], BzMax[i]);
+      }else if (i == 1){
+	printf("B = %f Rmin = %f Rmax = %f zmin = %f zmax = %f\n", BVal[0], BVal[1], BVal[2], BzMin[i], BzMax[i]);
+      }
+    }
+  }
+
   double PrimVtxZ = det->GetLayer(0)->GetZ();
   // prepare decays
   TGenPhaseSpace decay;
@@ -200,7 +210,9 @@ void GenerateSignalCandidates(Int_t nevents = 100000,
   
   TH2F* hYPtGen = new TH2F("hYPtGen", "y-#it{p}_{T} corr match;y;#it{p}_{T};counts", 80, 1.0, 5.4, 40, ptminSG, ptmaxSG);
   TH1D* hPtGen = new TH1D("hPtGen", "#it{p}_{Tgen};#it{p}_{T} (GeV/#it{c});counts", 40, ptminSG, ptmaxSG);
-  TH1D* hYGen = new TH1D("hYGen", "y full phase space;y;counts", 160., yminSG,ymaxSG);
+  TH1D* hYGen = new TH1D("hYGen", "y full phase space;y;counts", 160., yminSG,ymaxSG);  
+  TH1D* hMGen = new TH1D("hMGen", "Mass all match;m (GeV/#it{c}^{2});counts", 1000, 0.9*mass, 1.1*mass);
+  hMGen->GetListOfFunctions()->Add(fm);
   TH1D* hPtEff = new TH1D("hPtEff", "#it{p}_{T} efficiency;#it{p}_{T} (GeV/#it{c});counts", 40., ptminSG, ptmaxSG);
   TH1D* hYEff = new TH1D("hYEff", "y efficiency;counts", 160., yminSG,ymaxSG);
   TH2F* hYPtRecoAll = new TH2F("hYPtRecoAll", "y-#it{p}_{T} all match;y;#it{p}_{T};counts", 80, 1.0, 5.4, 40, ptminSG, ptmaxSG);
@@ -302,15 +314,15 @@ void GenerateSignalCandidates(Int_t nevents = 100000,
   if (writeNtuple)
   {
     fnt = new TFile(Form("fntSig%s.root",suffix.Data()), "recreate");
-    ntgen = new TNtuple("ntgen", "ntgen", "pt:y:vX:vY:vZ:px:py:pz", 32000); 
+    ntgen = new TNtuple("ntgen", "ntgen", "pt:centrality:rapidity:dist:ct", 32000); 
     if(nbody == 2)
-      ntcand = new TNtuple("ntcand", "ntcand", "mass:pt:y:dist:cosp:d01:d02:d0prod:ptMin:ptMax:dca:vX:vY:vZ:px:py:pz", 32000);
+      ntcand = new TNtuple("ntcand", "ntcand", "m:pt:centrality:rapidity:dist:ct:cosp:d01:d02:d0prod:ptMin:ptMax:dca:thetad:cts", 32000);
     else
-      ntcand = new TNtuple("ntcand", "ntcand", "mass:pt:y:dist:cosp:d01:d02:sigmavert:ptMin:ptMax:dca12:dca13:dca23:vX:vY:vZ:px:py:pz", 32000);
+      ntcand = new TNtuple("ntcand", "ntcand", "m:pt:centrality:rapidity:dist:ct:cosp:d01:d02:sigmavert:ptMin:ptMax:dca12:dca13:dca23", 32000);
   }
 
-  Float_t* arrnt = new Float_t[(nbody == 2) ? 17 : 19];
-  Float_t arrntgen[8];
+  Float_t* arrnt = new Float_t[(nbody == 2) ? 15 : 15];
+  Float_t arrntgen[5];
   double y0 = GetY0(Eint);
   //read the pdg code of the daughters
   int pdg_dau[2] = {0,0};
@@ -337,8 +349,8 @@ void GenerateSignalCandidates(Int_t nevents = 100000,
     Double_t phi = gRandom->Rndm() * 2 * TMath::Pi();
     Double_t pxGen = ptGen * TMath::Cos(phi);
     Double_t pyGen = ptGen * TMath::Sin(phi);
-
-    Double_t mt = TMath::Sqrt(ptGen * ptGen + mass * mass);
+    Double_t massbw = fm->GetRandom(mass*0.97,mass*1.03);
+    Double_t mt = TMath::Sqrt(ptGen * ptGen + massbw * massbw);
     Double_t pzGen = mt * TMath::SinH(yGen);
     Double_t en = mt * TMath::CosH(yGen);
 
@@ -395,13 +407,10 @@ void GenerateSignalCandidates(Int_t nevents = 100000,
         if(cond1 && nrec==0){
           if (ntgen){
             arrntgen[0] = ptGen;
-            arrntgen[1] = yGen;
-            arrntgen[2] = vX;
-            arrntgen[3] = vY;
-            arrntgen[4] = vZ;
-            arrntgen[5] = pxGen;
-            arrntgen[6] = pyGen;
-            arrntgen[7] = pzGen;
+            arrntgen[1] = 1;
+            arrntgen[2] = yGen;
+            arrntgen[3] = TMath::Sqrt(vX*vX+vY*vY+vZ*vZ);
+            arrntgen[4] = TMath::Sqrt(vX*vX+vY*vY+vZ*vZ)*mass/TMath::Sqrt(ptGen*ptGen+pzGen*pzGen);
             ntgen->Fill(arrntgen);
           }
 
@@ -440,6 +449,8 @@ void GenerateSignalCandidates(Int_t nevents = 100000,
     }
     if(nrec < nbody)
       continue;
+
+    hCentrality->Fill(1);
     if(nbody == 2){
       recProbe[0].PropagateToDCA(&recProbe[1]);
     }
@@ -466,6 +477,7 @@ void GenerateSignalCandidates(Int_t nevents = 100000,
       secvertgen[1][i] = recProbe[i].GetY();
       secvertgen[2][i] = recProbe[i].GetZ();
     }
+    hMGen->Fill(parentgen.M());
 
     Double_t  ptRec=parent.Pt();
     Double_t  massRec=parent.M();
@@ -473,7 +485,7 @@ void GenerateSignalCandidates(Int_t nevents = 100000,
 
 
     Float_t dca = 0, dca12 = 0, dca13 = 0, dca23 = 0;
-    Double_t xP, yP, zP, sigmaVert, cts = 0;
+    Double_t xP = 0, yP = 0, zP = 0, sigmaVert, cts = 0, thetad = 0;
     if(nbody == 2){
       if (ptau[0] > 0 && ptau[1] > 0) hyau2D->Fill(yau[0], yau[1]);
       parentrefl = daurecswapmass[0];
@@ -491,7 +503,7 @@ void GenerateSignalCandidates(Int_t nevents = 100000,
       hDCAx->Fill(d1, ptRec);
       hDCAy->Fill(d2, ptRec);
       hDCAz->Fill(d3, ptRec);
-
+      thetad = OpeningAngle(daurec[0],daurec[1]);
       ComputeVertex(recProbe[0],recProbe[1],xP,yP,zP);
       cts = CosThetaStar(parent,daurec[0],pdgParticle,pdg_dau[0],pdg_dau[1]);
     }
@@ -584,7 +596,8 @@ void GenerateSignalCandidates(Int_t nevents = 100000,
     Float_t distXY = TMath::Sqrt(xP * xP + yP * yP);
     Float_t distgen = TMath::Sqrt(secvertgen[0][0] * secvertgen[0][0] + secvertgen[1][0] * secvertgen[1][0] + secvertgen[2][0] * secvertgen[2][0]);
     Float_t distgenXY = TMath::Sqrt(secvertgen[0][0] * secvertgen[0][0] + secvertgen[1][0] * secvertgen[1][0]);
- 
+
+
     Double_t vsec[3] = {xP, yP, zP};
     Double_t cosp = CosPointingAngle(vprim, vsec, parent);
     Double_t ipD = ImpParXY(vprim, vsec, parent);
@@ -624,7 +637,7 @@ void GenerateSignalCandidates(Int_t nevents = 100000,
       ptdau[i] = recProbe[i].GetTrack()->Pt();
 
     }
-      
+    
     arrsp[0] = massRec;
     arrsp[1] = ptRec;
     arrsp[2] = yRec;
@@ -640,41 +653,34 @@ void GenerateSignalCandidates(Int_t nevents = 100000,
     if (ntcand){
       arrnt[0] = massRec;
       arrnt[1] = ptRec;
-      arrnt[2] = yRec;
-      arrnt[3] = dist;
-      arrnt[4] = cosp;
-      arrnt[5] = d0xy[0];
-      arrnt[6] = d0xy[1];
-      arrnt[7] = (nbody == 2) ? d0xy[0] * d0xy[1] : sigmaVert;
+      arrnt[2] = 1;
+      arrnt[3] = yRec;
+      arrnt[4] = dist;
+      arrnt[5] = mass*dist/parent.P();
+      arrnt[6] = cosp;
+      arrnt[7] = d0xy[0];
+      arrnt[8] = d0xy[1];
+      arrnt[9] = (nbody == 2) ? d0xy[0] * d0xy[1] : sigmaVert;
       if(nbody == 2){
-        arrnt[8] = TMath::Min(recProbe[0].GetTrack()->Pt(),recProbe[1].GetTrack()->Pt());
-        arrnt[9] = TMath::Max(recProbe[0].GetTrack()->Pt(),recProbe[1].GetTrack()->Pt());
-        arrnt[10] = dca; 
-        arrnt[11] = xP; 
-        arrnt[12] = yP; 
-        arrnt[13] = zP; 
-        arrnt[14] = parent.Px(); 
-        arrnt[15] = parent.Py(); 
-        arrnt[16] = parent.Pz(); 
+        arrnt[10] = TMath::Min(recProbe[0].GetTrack()->Pt(),recProbe[1].GetTrack()->Pt());
+        arrnt[11] = TMath::Max(recProbe[0].GetTrack()->Pt(),recProbe[1].GetTrack()->Pt());
+        arrnt[12] = dca; 
+        arrnt[19] = thetad; 
+        arrnt[20] = cts; 
       }
       else{
-        arrnt[8] = TMath::Min(TMath::Min(recProbe[0].GetTrack()->Pt(),recProbe[1].GetTrack()->Pt()),recProbe[2].GetTrack()->Pt());
-        arrnt[9] = TMath::Max(TMath::Max(recProbe[0].GetTrack()->Pt(),recProbe[1].GetTrack()->Pt()),recProbe[2].GetTrack()->Pt());
-        arrnt[10] = dca12;
-        arrnt[11] = dca13;
-        arrnt[12] = dca23;
-        arrnt[13] = xP; 
-        arrnt[14] = yP; 
-        arrnt[15] = zP; 
-        arrnt[16] = parent.Px(); 
-        arrnt[17] = parent.Py(); 
-        arrnt[18] = parent.Pz(); 
+        arrnt[10] = TMath::Min(TMath::Min(recProbe[0].GetTrack()->Pt(),recProbe[1].GetTrack()->Pt()),recProbe[2].GetTrack()->Pt());
+        arrnt[11] = TMath::Max(TMath::Max(recProbe[0].GetTrack()->Pt(),recProbe[1].GetTrack()->Pt()),recProbe[2].GetTrack()->Pt());
+        arrnt[12] = dca12;
+        arrnt[13] = dca13;
+        arrnt[14] = dca23;
       }
       ntcand->Fill(arrnt);
     }
   } //event loop
   
   fout->cd();  
+  hCentrality->Write();
   TH1F* hHitITS;
   TH2F* hHitITS2D;
   hHitITS = det->GetHhitITS();
@@ -733,6 +739,21 @@ void GenerateSignalCandidates(Int_t nevents = 100000,
     hDCA13->Write();
     hDCA23->Write();
   }
+
+
+  for(int i = 1; i <= hPtGen->GetNbinsX(); i++){
+    double n = hPtGen->GetBinContent(i);
+    if(n<0)
+      hPtGen->SetBinContent(i,0);
+  }
+  
+  for(int i = 1; i <= hYGen->GetNbinsX(); i++){
+    double n = hYGen->GetBinContent(i);
+    if(n<0)
+      hYGen->SetBinContent(i,0);
+  }
+  
+
 
   hYEff->Divide(hYGen);
   hPtEff->Divide(hPtGen);
@@ -818,6 +839,7 @@ void GenerateSignalCandidates(Int_t nevents = 100000,
   TFile fout2(Form("DecayHistos%s.root",suffix.Data()), "RECREATE");
   hPtGen->Write();
   hYGen->Write();
+  hMGen->Write();
   if(nbody == 2){
     hptau[0]->SetName("hptdauPos");
     hyau[0]->SetName("hydauPos");
@@ -857,7 +879,6 @@ void MakeCombinBkgCandidates3Body(const char* trackTreeFile="treeBkgEvents.root"
 			       Bool_t usePID=kFALSE,
              int pdgMother = 3334,
              int pdg_unstable_dau = 3122,
-             double Eint = 158.,
              int minITSHits = 5){
 
   // Read the TTree of tracks produced with runBkgVT.C
@@ -900,7 +921,6 @@ void MakeCombinBkgCandidates3Body(const char* trackTreeFile="treeBkgEvents.root"
 
   KMCDetectorFwd *det = new KMCDetectorFwd();
   det->ReadSetup(setup, setup);
-  det->InitBkg(Eint);
   det->ForceLastActiveLayer(det->GetLastActiveLayerITS()); // will not propagate beyond VT
   det->SetMinITSHits(minITSHits); //NA60+
   //det->SetMinITSHits(det->GetNumberOfActiveLayersITS()-1); //NA60
@@ -974,10 +994,10 @@ void MakeCombinBkgCandidates3Body(const char* trackTreeFile="treeBkgEvents.root"
 
   TFile *fnt = 0x0;
   TNtuple *ntcand = 0x0;
-  Float_t arrnt[13];
+  Float_t arrnt[14];
   if (writeNtuple){
     fnt = new TFile(Form("fntBkg%s.root",suffix.Data()), "recreate");
-    ntcand = new TNtuple("ntcand", "ntcand", "mass:pt:y:dist:cosp:d01:d02:sigmavert:ptMin:ptMax:dca12:dca13:dca23", 32000);
+    ntcand = new TNtuple("ntcand", "ntcand", "m:pt:centrality:rapidity:dist:cosp:d01:d02:sigmavert:ptMin:ptMax:dca12:dca13:dca23", 32000);
   }
 
   //read the pdg code of the daughters
@@ -1137,17 +1157,18 @@ void MakeCombinBkgCandidates3Body(const char* trackTreeFile="treeBkgEvents.root"
               if (ntcand){
                 arrnt[0] = invMass;
                 arrnt[1] = pt;
-                arrnt[2] = y;
-                arrnt[3] = dist;
-                arrnt[4] = cosp;
-                arrnt[5] = d0xy1;
-                arrnt[6] = d0xy2;
-                arrnt[7] = sigmaVert;
-                arrnt[8] = TMath::Min(TMath::Min(recProbe[0].GetTrack()->Pt(),recProbe[1].GetTrack()->Pt()),recProbe[2].GetTrack()->Pt());
-                arrnt[9] = TMath::Max(TMath::Max(recProbe[0].GetTrack()->Pt(),recProbe[1].GetTrack()->Pt()),recProbe[2].GetTrack()->Pt());
-                arrnt[10] = dca12;
-                arrnt[11] = dca13;
-                arrnt[12] = dca23;
+                arrnt[2] = 1;
+                arrnt[3] = y;
+                arrnt[4] = dist;
+                arrnt[5] = cosp;
+                arrnt[6] = d0xy1;
+                arrnt[7] = d0xy2;
+                arrnt[8] = sigmaVert;
+                arrnt[9] = TMath::Min(TMath::Min(recProbe[0].GetTrack()->Pt(),recProbe[1].GetTrack()->Pt()),recProbe[2].GetTrack()->Pt());
+                arrnt[10] = TMath::Max(TMath::Max(recProbe[0].GetTrack()->Pt(),recProbe[1].GetTrack()->Pt()),recProbe[2].GetTrack()->Pt());
+                arrnt[11] = dca12;
+                arrnt[12] = dca13;
+                arrnt[13] = dca23;
                 
                 ntcand->Fill(arrnt);
               }
@@ -1190,14 +1211,10 @@ void MakeCombinBkgCandidates3Body(const char* trackTreeFile="treeBkgEvents.root"
 }
 
 void MakeCombinBkgCandidates2Body(const char* trackTreeFile="treeBkgEvents_layer5.root",
-             TString suffix = "_K0s",
+             TString suffix = "_PHI",
+             int pdgMother = 333,
              const char *setup = "../setups/setup-EHN1_BetheBloch.txt",
-			       Int_t nevents = 999999, 
-			       Int_t writeNtuple = kTRUE,
-             int pdgMother = 310,
-             bool matter = true, 
-             double Eint = 158.,
-             int minITSHits = 5){
+			       Int_t writeNtuple = kTRUE){
 
   // Read the TTree of tracks produced with runBkgVT.C
   // Create D0 combinatorial background candidates (= OS pairs of tracks)
@@ -1207,40 +1224,16 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFile="treeBkgEvents_layer
   TTree *tree = (TTree *)filetree->Get("tree");
   TClonesArray *arr = 0;
   tree->SetBranchAddress("tracks", &arr);
-  Int_t entries = tree->GetEntries();
-  printf("Number of events in tree = %d\n",entries);
-  if(nevents>entries) nevents=entries;
-  else printf(" --> Analysis performed on first %d events\n",nevents);
+  Int_t nevents = tree->GetEntries();
 
   TDatime dt;
   static UInt_t seed = dt.Get();
-  gRandom->SetSeed(10);
+  gRandom->SetSeed(seed);
 
-  //Magnetic field and detector parameters
-  MagField *mag = new MagField(1);
-  int BNreg = mag->GetNReg();
-  const double *BzMin = mag->GetZMin();
-  const double *BzMax = mag->GetZMax();
-  const double *BVal;
-  printf("*************************************\n");
-  printf("number of magnetic field regions = %d\n", BNreg);
-  
-  
-  for (int i = 0; i < BNreg; i++){
-    BVal = mag->GetBVals(i);
-    printf("*** Field region %d ***\n", i);
-    if (i == 0){
-      printf("Bx = %f B = %f Bz = %f zmin = %f zmax = %f\n", BVal[0], BVal[1], BVal[2], BzMin[i], BzMax[i]);
-    }else if (i == 1){
-      printf("B = %f Rmin = %f Rmax = %f zmin = %f zmax = %f\n", BVal[0], BVal[1], BVal[2], BzMin[i], BzMax[i]);
-    }
-  }
   
   KMCDetectorFwd *det = new KMCDetectorFwd();
   det->ReadSetup(setup, setup);
-  det->InitBkg(Eint);
   det->ForceLastActiveLayer(det->GetLastActiveLayerITS()); // will not propagate beyond VT
-  det->SetMinITSHits(minITSHits); //NA60+
   //det->SetMinITSHits(det->GetNumberOfActiveLayersITS()-1); //NA60
   det->SetMinMSHits(0); //NA60+
   //det->SetMinMSHits(det->GetNumberOfActiveLayersMS()-1); //NA60
@@ -1266,7 +1259,28 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFile="treeBkgEvents_layer
   //det->UseTrackOriginAsVertex();
   det->BookControlHistos();
   
+  TVirtualMagField* fld = TGeoGlobalMagField::Instance()->GetField();
+  if (fld->IsA() == MagField::Class()) {
+    MagField* mag = (MagField*) fld;
+    int BNreg = mag->GetNReg();
+    const double *BzMin = mag->GetZMin();
+    const double *BzMax = mag->GetZMax();
+    const double *BVal;
+    printf("*************************************\n");
+    printf("number of magnetic field regions = %d\n", BNreg);
+    for (int i = 0; i < BNreg; i++){
+      BVal = mag->GetBVals(i);
+      printf("*** Field region %d ***\n", i);
+      if (i == 0){
+	printf("Bx = %f B = %f Bz = %f zmin = %f zmax = %f\n", BVal[0], BVal[1], BVal[2], BzMin[i], BzMax[i]);
+      }else if (i == 1){
+	printf("B = %f Rmin = %f Rmax = %f zmin = %f zmax = %f\n", BVal[0], BVal[1], BVal[2], BzMin[i], BzMax[i]);
+      }
+    }
+  }
+  
   TFile *fout = new TFile(Form("Bkg-histos%s.root",suffix.Data()), "recreate");
+  TH1D* hCentrality = new TH1D("hCentrality", ";centrality;counts", 100, 0, 100);
   TH1D* hPtRecoAll = new TH1D("hPtRecoAll", "Pt all match", 50, 0., 5.);
   TH2F* hYPtRecoAll = new TH2F("hYPtRecoAll", "Y-Pt all match", 40, 1., 5., 50, 0., 5.);
   TH1D* hMassAll = new TH1D("hMassAll", "Mass all match", 250, 0., 2.5);
@@ -1313,17 +1327,20 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFile="treeBkgEvents_layer
   Float_t arrnt[14];
   if (writeNtuple){
     fnt = new TFile(Form("fntBkg%s.root",suffix.Data()), "recreate");
-    ntcand = new TNtuple("ntcand", "ntcand", "mass:pt:y:dist:cosp:d01:d02:d0prod:dca:ptMin:ptMax:xP:yP:zP", 32000);
+    ntcand = new TNtuple("ntcand", "ntcand", "m:pt:centrality:rapidity:dist:ct:cosp:d01:d02:d0prod:dca:ptMin:thetad:true", 32000);
   }
 
   //read the pdg code of the daughters
   int pdg_dau[2] = {0,0};
-  GetPDGDaughters(pdgMother,pdg_dau,matter);
-  int iMassHypMax = pdg_dau[0]!=pdg_dau[1] ? 2 : 1;
-  KMCProbeFwd recProbe[2];
+  GetPDGDaughters(pdgMother,pdg_dau,true);
+  int swap_mass = TMath::Abs(pdg_dau[0])!=TMath::Abs(pdg_dau[1]) ? 2 : 1;
+  KMCProbeFwd recProbe[2],recProbeTo0[2];
   TLorentzVector parent, daurec[2];
   int icount = 0;
+  Int_t trueCand = 0;
+  int yes = 0;
   for (Int_t iev = 0; iev < nevents; iev++){
+    hCentrality->Fill(1);
     hNevents->Fill(0.5);
     Double_t vprim[3] = {0, 0, 0};
     Double_t countCandInPeak = 0;
@@ -1334,9 +1351,12 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFile="treeBkgEvents_layer
     for (Int_t itr = 0; itr < arrentr; itr++){
       icount++;
       KMCProbeFwd *tr1 = (KMCProbeFwd *)arr->At(itr);
-      // cout << "tr P=" << tr1->GetP() << endl;
+      Bool_t pdgMom1 = tr1->GetPdgMother() == pdgMother;
+      Bool_t pdgDa1 = tr1->GetPdg() == pdg_dau[0] || tr1->GetPdg() == pdg_dau[1];
+      //std::cout<<"test: "<< tr1->GetPdg()<<" "<<tr1->GetMass()<<std::endl;
       Float_t ch1 = tr1->GetCharge();
       for (Int_t itr2 = itr; itr2 < arrentr; itr2++){
+
         KMCProbeFwd *tr2 = (KMCProbeFwd *)arr->At(itr2);
         Float_t ch2 = tr2->GetCharge();
         if (ch1 * ch2 > 0) continue;
@@ -1347,17 +1367,31 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFile="treeBkgEvents_layer
           recProbe[0] = *tr2;
           recProbe[1] = *tr1;
         }
-
         
-        for(Int_t iMassHyp=0; iMassHyp<iMassHypMax; iMassHyp++){
+        Bool_t pdgMom2 = tr2->GetPdgMother() == pdgMother;
+        Bool_t index = tr2->GetIndexMom() == tr1->GetIndexMom();
+        Bool_t pdgDa2 = tr2->GetPdg() == pdg_dau[0] || tr2->GetPdg() == pdg_dau[1];
+        if (pdgMom1 && pdgMom2 && index && pdgDa1 && pdgDa2){
+          trueCand = 1;
+          yes++;
+          std::cout<<"pdg dau: "<< tr1->GetPdg()<<" "<<tr2->GetPdg()<<std::endl;
+          printf("matched\n");
+        }
+        else 
+          trueCand = 0;
 
-          recProbe[0].PropagateToDCA(&recProbe[1]);
-          Double_t pxyz[3];
-          recProbe[0].GetXYZ(pxyz);
-          
-          Double_t pxyz2[3];
-          recProbe[1].GetXYZ(pxyz2);
-          
+
+        Double_t pxyz[3];
+        Double_t pxyz2[3];
+
+        recProbe[0].PropagateToDCA(&recProbe[1]);
+        recProbe[0].GetXYZ(pxyz);
+        recProbe[1].GetXYZ(pxyz2);
+
+        recProbe[0].GetPXYZ(pxyz);
+        recProbe[1].GetPXYZ(pxyz2);
+	
+        for(Int_t iMassHyp=0; iMassHyp < swap_mass; iMassHyp++){
           Int_t iNeg=-1;
           if(iMassHyp==0){
             daurec[0].SetXYZM(pxyz[0], pxyz[1], pxyz[2], TDatabasePDG::Instance()->GetParticle(pdg_dau[1])->Mass());
@@ -1377,7 +1411,7 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFile="treeBkgEvents_layer
           hYPtRecoAll->Fill(y, pt);
           hPtRecoAll->Fill(pt);
           hMassAll->Fill(invMass);
-          if(invMass>0.5*massM  && invMass<1.5*massM){
+          if(invMass>0.8*massM  && invMass<1.2*massM){
             // range to fill histos
             if(invMass>0.8*massM && invMass<1.2*massM) countCandInPeak++;
             Float_t d1 = recProbe[1].GetX() - recProbe[0].GetX();
@@ -1399,6 +1433,7 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFile="treeBkgEvents_layer
             Float_t distXY = TMath::Sqrt(xP * xP + yP * yP);
             Double_t vsec[3] = {xP, yP, zP};
             Double_t cosp = CosPointingAngle(vprim, vsec, parent);
+            Double_t thetad = OpeningAngle(daurec[0],daurec[1]);
             Double_t cts = CosThetaStar(parent,daurec[iNeg],pdgMother,pdg_dau[0],pdg_dau[1]);
             Double_t ipD = ImpParXY(vprim, vsec, parent);
             hCosp->Fill(cosp, pt);
@@ -1411,15 +1446,17 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFile="treeBkgEvents_layer
             hDist->Fill(dist);
             hDistz->Fill(zP);
             
-            recProbe[0].PropagateToZBxByBz(0);
-            Double_t d0x1 = recProbe[0].GetX();
-            Double_t d0y1 = recProbe[0].GetY();
+            recProbeTo0[0] = recProbe[0];
+            recProbeTo0[0].PropagateToZBxByBz(0);
+            Double_t d0x1 = recProbeTo0[0].GetX();
+            Double_t d0y1 = recProbeTo0[0].GetY();
             Double_t d0xy1 = TMath::Sqrt(d0x1 * d0x1 + d0y1 * d0y1);
             if (d0x1 < 0) d0xy1 *= -1;
             
-            recProbe[1].PropagateToZBxByBz(0);
-            Double_t d0x2 = recProbe[1].GetX();
-            Double_t d0y2 = recProbe[1].GetY();
+            recProbeTo0[1] = recProbe[1];
+            recProbeTo0[1].PropagateToZBxByBz(0);
+            Double_t d0x2 = recProbeTo0[1].GetX();
+            Double_t d0y2 = recProbeTo0[1].GetY();
             Double_t d0xy2 = TMath::Sqrt(d0x2 * d0x2 + d0y2 * d0y2);
             if (d0x2 < 0) d0xy2 *= -1;
               
@@ -1428,7 +1465,6 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFile="treeBkgEvents_layer
             ////hd0XYprod->Fill(d0xy1 * d0xy2, pt);
             hd0XY1->Fill(d0xy1, pt);
             hd0XY2->Fill(d0xy2, pt);
-            
             arrsp[0] = invMass;
             arrsp[1] = pt;
             arrsp[2] = y;
@@ -1444,18 +1480,20 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFile="treeBkgEvents_layer
             if (ntcand){
               arrnt[0] = invMass;
               arrnt[1] = pt;
-              arrnt[2] = y;
-              arrnt[3] = dist;
-              arrnt[4] = cosp;
-              arrnt[5] = d0xy1;
-              arrnt[6] = d0xy2;
-              arrnt[7] = d0xy1 * d0xy2;
-              arrnt[8] = dca;
-              arrnt[9] = TMath::Min(recProbe[0].GetTrack()->Pt(),recProbe[1].GetTrack()->Pt());
-              arrnt[10] = TMath::Max(recProbe[0].GetTrack()->Pt(),recProbe[1].GetTrack()->Pt());
-              arrnt[11] = xP;
-              arrnt[12] = yP;
-              arrnt[13] = zP;
+              arrnt[2] = 1;
+              arrnt[3] = y;
+              arrnt[4] = dist;
+              arrnt[5] = dist*massM*parent.P();
+              arrnt[6] = cosp;
+              arrnt[7] = d0xy1;
+              arrnt[8] = d0xy2;
+              arrnt[9] = d0xy1 * d0xy2;
+              arrnt[10] = dca;
+              arrnt[11] = TMath::Min(recProbe[0].GetTrack()->Pt(),recProbe[1].GetTrack()->Pt());
+              //arrnt[12] = TMath::Max(recProbe[0].GetTrack()->Pt(),recProbe[1].GetTrack()->Pt());
+              arrnt[12] = thetad;
+              arrnt[13] = trueCand;
+              //arrnt[18] = cts;
               ntcand->Fill(arrnt);
             }
 	    
@@ -1470,6 +1508,7 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFile="treeBkgEvents_layer
   }
   
   fout->cd();
+  hCentrality->Write();
   hNevents->Write();
   hcand->Write();
   hcandpeak->Write();  
@@ -1498,6 +1537,7 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFile="treeBkgEvents_layer
     ntcand->Write();
     fnt->Close();
   }
+  std::cout<<yes<<std::endl;
 }
 
 
