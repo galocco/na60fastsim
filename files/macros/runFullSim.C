@@ -58,7 +58,7 @@ double y0_rapidity[2][NParticles][NEnergy] = {{{0.425,0.538,0.487,0.682,0.},{0,0
                                               {{0.425,0.538,0.487,0.682,0.},{0,0,0.569,0.668,0.727},{0,0,0,0,0},{0,0,0.0,0},{0,0,0,0,0}}};//antimatter
 //multiplicity for event [matter/antimatter][particle][beam energy]
 //                                                       phi                        K                   Lambda                   Omega                    Csi
-double multiplicity[2][NParticles][NEnergy] = {{{1.89,1.84,2.55,4.04,8.46},{0,0,59.1,76.9,77.3},{27.1,36.9,43.1,50.1,44.9},{0,0,0.14,0,0.43},{1.50,2.42,2.96,3.80,4.04}},//matter
+double multiplicity[2][NParticles][NEnergy] = {{{1.89,1.84,2.55,4.04,8.46},{0,0,(59.1+19.2)/2.,76.9,77.3},{27.1,36.9,43.1,50.1,44.9},{0,0,0.14,0,0.43},{1.50,2.42,2.96,3.80,4.04}},//matter
                                                {{0,0,0,0,0},{0,0,0,0,0},{0.16,0.39,0.68,1.82,3.07},{0,0,0.14,0,0.19},{0.12,0.13,0.58,0.66,0}}};//antimatter
 //name of the particles
 TString particle_name[NParticles] = {"phi","K0s","Lambda","Omega","Csi"};
@@ -87,7 +87,7 @@ void runFullSim(Int_t nevents = 5,
         TString suffix = "_layer5_new",
 	      bool simulateBg=kFALSE,
         int minITSHits = 5,
-        bool only_prompt = true)
+        bool only_prompt = false)
 {
 
   double y0 = GetY0(Eint);
@@ -202,7 +202,7 @@ void runFullSim(Int_t nevents = 5,
   Double_t lifetime = 0;
   Double_t multiplicity = 0;
   Int_t ntrack = 0;
-
+  TLorentzVector *mom = new TLorentzVector();
   Int_t index_list[NParticles+4];
   Int_t particle_index = 0;
   Double_t eff = 0;
@@ -329,7 +329,8 @@ void runFullSim(Int_t nevents = 5,
 
       multiplicity = GetMultiplicity(pdg_mom,Eint,true)+GetMultiplicity(pdg_mom,Eint,false);
       ntrack = gRandom->Poisson(multiplicity);
-
+      //if(pdg_mom==310)
+      //  std::cout<<multiplicity<<" "<<ntrack<<std::endl;
       for (int itr = 0; itr < ntrack; itr++){
         charge = gRandom->Rndm() > GetMultiplicity(pdg_mom,Eint,false)/multiplicity ? 1 : -1;
         fpt->SetParameter(0,mass);
@@ -348,7 +349,6 @@ void runFullSim(Int_t nevents = 5,
 
 
         TClonesArray *particles = new TClonesArray("TParticle", 1000);
-        TLorentzVector *mom = new TLorentzVector();
         mom->SetPxPyPzE(pxGen, pyGen, pzGen, en);
         Int_t np;
         do{
@@ -356,7 +356,6 @@ void runFullSim(Int_t nevents = 5,
           np = fDecayer->ImportParticles(particles);
         } while (np < 0);
         // loop on decay products
-        int pair = 0;
         for (int i = 0; i < np; i++) {
 
           TParticle *iparticle = (TParticle *)particles->At(i);
@@ -364,7 +363,6 @@ void runFullSim(Int_t nevents = 5,
           index_list[GetArrayPosition(kf)]++;
           hPDGGen->Fill(kf);
           if(kf==89 || TDatabasePDG::Instance()->GetParticle(kf)->Charge()==0) continue;
-          pair++;
           vX = iparticle->Vx();
           vY = iparticle->Vy();
           vZ = iparticle->Vz();
@@ -386,9 +384,13 @@ void runFullSim(Int_t nevents = 5,
             continue;
           }
           trw->SetIndex(index_list[GetArrayPosition(kf)]);
+          //std::cout<<"setindex: "<<index_list[GetArrayPosition(kf)]<<" "<<trw->GetIndex()<<std::endl;
           trw->SetIndexMom(index_list[GetArrayPosition(pdg_mom)]);
+          //std::cout<<"setindex: "<<index_list[GetArrayPosition(pdg_mom)]<<" "<<trw->GetIndexMom()<<std::endl;
           trw->SetPdgMother((kf==pdg_mom) ? 0:pdg_mom);
+          //std::cout<<"setindex: "<<pdg_mom<<" "<<trw->GetPdgMother()<<std::endl;
           trw->SetPdg(kf);
+          //std::cout<<"setindex: "<<kf<<" "<<trw->GetPdg()<<std::endl;
           new (aarrtr[icount]) KMCProbeFwd(*trw);
           icount++;
         }
