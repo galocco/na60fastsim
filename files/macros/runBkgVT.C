@@ -30,14 +30,15 @@ double ChiTot = 1.5;
 
 double vX = 0, vY = 0, vZ = 0; // event vertex
 
+TString all_particle_name[3] = {"pion","kaon","proton"};
 
 TDatime dt;
 
 void runBkgVT(Int_t nevents = 5, 
-	      double Eint = 158.,//"../setups/setup-EHN1_BetheBloch.txt"
-	      const char *setup = "../setups/setup_EHN1-H8_short_10pixel_1.5T_BB.txt",
-        TString suffix = "_layer10",
-	      bool simulateBg=kTRUE,
+	      double Eint = 40.,//"../setups/setup_EHN1-H8_short_10pixel_1.5T_BB.txt"
+	      const char *setup = "../setups/setup-EHN1_BetheBloch.txt",
+        TString suffix = "_layer5_E40_longB",
+	      bool simulateBg=kFALSE,
         int minITSHits = 5)
 {
 
@@ -46,6 +47,11 @@ void runBkgVT(Int_t nevents = 5,
   gRandom->SetSeed(seed);
   //gSystem->Setenv("PYTHIA8DATA", gSystem->ExpandPathName("$ALICE_ROOT/PYTHIA8/pythia8210/xmldoc")); // check if pythia8 path is set correctly !!!!
   
+  TH1D *hEff[3];
+  for(int i=0; i<3; i++){
+    hEff[i] = new TH1D(Form("hEff_%s",all_particle_name[i].Data()),Form("%s;efficiency;counts",all_particle_name[i].Data()),20,0,1);
+  }
+
   TH2F *hResPy = new TH2F("hResPy", ";#it{p}_{ygen}-#it{p}_{yrec} (GeV/#it{c});#it{p}_{T} (GeV/#it{c});counts", 25, -0.001, 0.001, 30, 0, 3);
   TH2F *hResPyPos = new TH2F("hResPyPos", ";#it{p}_{ygen}-#it{p}_{yrec} (GeV/#it{c});#it{p}_{T} (GeV/#it{c});counts", 25, -0.001, 0.001, 30, 0, 3);
   TH2F *hResPyNeg = new TH2F("hResPyNeg", ";#it{p}_{ygen}-#it{p}_{yrec} (GeV/#it{c});#it{p}_{T} (GeV/#it{c});counts", 25, -0.001, 0.001, 30, 0, 3);
@@ -142,7 +148,7 @@ void runBkgVT(Int_t nevents = 5,
   TClonesArray *arrtr = new TClonesArray("KMCProbeFwd");
   TClonesArray &aarrtr = *arrtr;
   tree->Branch("tracks", &arrtr);
-  
+  int old_count=0;
   for (Int_t iev = 0; iev < nevents; iev++){
     aarrtr.Clear();
     printf(" ***************  ev = %d \n", iev);
@@ -198,12 +204,12 @@ void runBkgVT(Int_t nevents = 5,
       if(trw->GetNFakeITSHits()>0) hGenStat->Fill(6);
       icount++;
     }
-
+    hEff[0]->Fill(icount/ntrPi);
     // kaons
     //gRandom->SetSeed(newseed++);
     double ntrK = gRandom->Poisson(det->GetNChK());
     //printf("fNChK=%f ntrK=%f\n", det->GetNChK(), ntrK);
-    
+    old_count = icount;
     for (int itr = 0; itr < ntrK; itr++){
       //gRandom->SetSeed(newseed++);
       yrap = fdNdYK->GetRandom();
@@ -240,9 +246,11 @@ void runBkgVT(Int_t nevents = 5,
       icount++;
     }
     
+    hEff[1]->Fill((icount-old_count)/ntrK);
     // protons
     //gRandom->SetSeed(newseed++);
     double ntrP = gRandom->Poisson(det->GetNChP());
+    old_count = icount;
     //printf("fNChP=%f ntrP=%f\n", det->GetNChP(), ntrP);
     for (int itr = 0; itr < ntrP; itr++){
       //gRandom->SetSeed(newseed++);
@@ -282,6 +290,7 @@ void runBkgVT(Int_t nevents = 5,
       if(trw3->GetNFakeITSHits()>0) hGenStat->Fill(18);
       icount++;
     }
+    hEff[2]->Fill((icount-old_count)/ntrP);
     printf("Pions+Kaons+Protons in array = %d out of %.0f \n",icount,ntrPi+ntrK+ntrP);
     tree->Fill();
   }
@@ -290,6 +299,9 @@ void runBkgVT(Int_t nevents = 5,
   f->Close();
   
   TFile *outfile = new TFile(Form("bkgdistributions%s.root",suffix.Data()), "recreate");
+  for(int i=0; i<3; i++){
+    hEff[i]->Write();
+  }
   outfile->cd();
   hResPy->Write();
   hResPyNeg->Write();

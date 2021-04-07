@@ -22,7 +22,7 @@
 #include "TTree.h"
 #include "TParticle.h"
 #include "TDatabasePDG.h"
-
+#include "MeasurementUtils.h"
 
 #include "AliAODRecoDecay.h"
 #include "AliDecayer.h"
@@ -31,54 +31,8 @@
 
 // Track Chi2Tot cut
 double ChiTot = 1.5;
-// rapidity range
-double yminSG = -2.; 
-double ymaxSG = 8.;
-// pT range
-double ptminSG = 0.;
-double ptmaxSG = 4.;
 // event vertex
 double vX = 0, vY = 0, vZ = 0;
-//number of energy of the colliding beam
-const int NEnergy = 5;
-//number of particles 
-const int NParticles = 5;
-//array of the energy in GeV
-double Elab[NEnergy] = {20,30,40,80,158};
-//                                                    phi                        K               Lambda                Omega                    Csi
-double Tslope[2][NParticles][NEnergy] = {{{196.8,237.4,244.6,239.8,298.7},{0,0,228.9, 223.1, 228.9},{244,249,258,265,301},{0,0,218,0,267},{221,233,222,227,277}},//matter e rapidity distribution [matter/antimatter][particle][beam energy]
-                                         {{196.8,237.4,244.6,239.8,298.7},{0,0,226,217,226},{339,284,301,292,303},{0,0,218,0,259},{311,277,255,321,0}}};//antimatter
-//sigma parameter of the gaussians of th                    phi                        K                       Lambda                Omega                    Csi
-double sigma_rapidity[2][NParticles][NEnergy] = {{{0.425,0.538,0.696,0.658,1.451},{0,0,0.674, 0.743, 0.84},{0.51,0.66,0.91,0.87,1.0},{0,0,0.6,0,1.2},{0.45,0.56,0.76,0.71,1.18}},//matter
-                                                 {{0.425,0.538,0.696,0.658,1.451},{0,0,0,0,0},{0,0,0.71,0.85,0.95},{0,0,0.6,0,1.0},{0,0,0,0,1.2}}};//antimatter
-//anti omega sigma  e lambda
-//mu paramter of the gaussian of the rapidity distribution [matter/antimatter][particle][beam energy]
-//                                                       phi                        K                   Lambda                   Omega                    Csi
-double y0_rapidity[2][NParticles][NEnergy] = {{{0.425,0.538,0.487,0.682,0.},{0,0,0.619, 0.701, 0.775},{0.49,0.59,0.65,0.94,0},{0,0,0,0,0},{0.45,0.47,0.54,0.68,0}},//matter
-                                              {{0.425,0.538,0.487,0.682,0.},{0,0,0.569,0.668,0.727},{0,0,0,0,0},{0,0,0.0,0},{0,0,0,0,0}}};//antimatter
-//multiplicity for event [matter/antimatter][particle][beam energy]
-//                                                       phi                        K                   Lambda                   Omega                    Csi
-double multiplicity[2][NParticles][NEnergy] = {{{1.89,1.84,2.55,4.04,8.46},{0,0,(59.1+19.2)/2.,76.9,77.3},{27.1,36.9,43.1,50.1,44.9},{0,0,0.14,0,0.43},{1.50,2.42,2.96,3.80,4.04}},//matter
-                                               {{0,0,0,0,0},{0,0,0,0,0},{0.16,0.39,0.68,1.82,3.07},{0,0,0.14,0,0.19},{0.12,0.13,0.58,0.66,0}}};//antimatter
-//name of the particles
-TString particle_name[NParticles] = {"phi","K0s","Lambda","Omega","Csi"};
-TString all_particle_name[NParticles+3] = {"pion","kaon","proton","phi","K0s","Lambda","Omega","Csi"};
-
-//pdg code of the particles
-double pdg_mother[NParticles] = {333,310,3122,3334,3312};
-//pdg code of the daughters
-//                                     K+    K-   pi+  pi-    p    pi-  Lambda  K-  Lambda pi-
-double pdg_daughter[NParticles][2] = {{321,-321},{211,-211},{2212,-211},{3122,-321},{3122,-211}};
-
-
-double GetTslope(int pdgParticle, double Eint, bool matter);
-double GetSigmaRapidity(int pdgParticle, double Eint, bool matter);
-double GetY0Rapidity(int pdgParticle, double Eint, bool matter);
-double GetMultiplicity(int pdgParticle, double Eint, bool matter);
-double GetY0(double Eint);
-void GetPDGDaughters(int pdgParticle,int pdgDaughters[], bool matter);
-int GetArrayPosition(int pdg);
-
 TDatime dt;
 
 void runFullSim(Int_t nevents = 5, 
@@ -89,8 +43,6 @@ void runFullSim(Int_t nevents = 5,
         int minITSHits = 5,
         bool only_prompt = false)
 {
-
-  double y0 = GetY0(Eint);
   int refreshBg = 100;
   static UInt_t seed = dt.Get();
   gRandom->SetSeed(seed);
@@ -176,10 +128,9 @@ void runFullSim(Int_t nevents = 5,
 
   //define the pT and rapidity probability function
   TF1 *fpt = new TF1("fpt","x*exp(-TMath::Sqrt(x**2+[0]**2)/[1])",ptminSG,ptmaxSG);
-  TF1 *fy = new TF1("fy","exp(-0.5*((x-[0])/[1])**2)+exp(-0.5*((x+[0])/[1])**2) ",-10,10);
-
-  TF1 *fm = new TF1("fm","1/((x*x-[0]*[0])*(x*x-[0]*[0])*[2]+([0]*[1])*([0]*[1]))");
-  fm->SetParameter(2,TMath::Power(TMath::C(),4));
+  TF1 *fy = new TF1("fy","exp(-0.5*((x-[0]-[2])/[1])**2)+exp(-0.5*((x+[0]-[2])/[1])**2) ",-10,10);
+  fy->SetParameter(2,GetY0(Eint));
+  TF1 *fm = new TF1("fm","1/((x-[0])**2-([1]/2)**2)");
 
   TFile *f = new TFile(Form("treeBkgEvents%s.root",suffix.Data()), "RECREATE");
   TTree *tree = new TTree("tree", "tree Bkg");
@@ -187,7 +138,6 @@ void runFullSim(Int_t nevents = 5,
   TClonesArray &aarrtr = *arrtr;
   tree->Branch("tracks", &arrtr);
   
-
   Double_t charge = 0;
   Double_t yrap = 0;
   Double_t pt = 0;
@@ -204,8 +154,7 @@ void runFullSim(Int_t nevents = 5,
   Int_t ntrack = 0;
   TLorentzVector *mom = new TLorentzVector();
   Int_t index_list[NParticles+4];
-  Int_t particle_index = 0;
-  Double_t eff = 0;
+
   for (Int_t iev = 0; iev < nevents; iev++){
     // montecarlo ID
     for(int i=0; i<NParticles+3; i++)
@@ -232,7 +181,6 @@ void runFullSim(Int_t nevents = 5,
 
       TLorentzVector *ppi = new TLorentzVector(0., 0., 0., 0.);
       ppi->SetXYZM(pxyz[0], pxyz[1], pxyz[2], mass);
-      double py= pxyz[1];
       index_list[0]++;
 
       if (!det->SolveSingleTrack(ppi->Pt(), ppi->Rapidity(), ppi->Phi(), mass, charge, 0, 0, 0, 0, 1, 99)){
@@ -266,8 +214,6 @@ void runFullSim(Int_t nevents = 5,
       
       TLorentzVector *pk = new TLorentzVector(0., 0., 0., 0.);
       pk->SetXYZM(pxyz[0], pxyz[1], pxyz[2], mass);
-      double py= pxyz[1];
-
       index_list[1]++;
       if (!det->SolveSingleTrack(pk->Pt(), pk->Rapidity(), pk->Phi(), mass, charge, 0, 0, 0, 0, 1, 99))
         continue;
@@ -297,8 +243,6 @@ void runFullSim(Int_t nevents = 5,
       
       TLorentzVector *pp = new TLorentzVector(0., 0., 0., 0.);
       pp->SetXYZM(pxyz[0], pxyz[1], pxyz[2], mass);
-      double py= pxyz[1];
-
       index_list[2]++;
       if (!det->SolveSingleTrack(pp->Pt(), pp->Rapidity(), pp->Phi(), mass, charge, 0, 0, 0, 0, 1, 99))
         continue;
@@ -316,6 +260,7 @@ void runFullSim(Int_t nevents = 5,
       new (aarrtr[icount]) KMCProbeFwd(*trw);
       icount++;
     }
+    
     if(!only_prompt)
     for (int im = 0; im < NParticles; im++){
       int pdg_mom = pdg_mother[im];
@@ -329,15 +274,13 @@ void runFullSim(Int_t nevents = 5,
 
       multiplicity = GetMultiplicity(pdg_mom,Eint,true)+GetMultiplicity(pdg_mom,Eint,false);
       ntrack = gRandom->Poisson(multiplicity);
-      //if(pdg_mom==310)
-      //  std::cout<<multiplicity<<" "<<ntrack<<std::endl;
       for (int itr = 0; itr < ntrack; itr++){
         charge = gRandom->Rndm() > GetMultiplicity(pdg_mom,Eint,false)/multiplicity ? 1 : -1;
         fpt->SetParameter(0,mass);
         fpt->SetParameter(1,GetTslope(pdg_mom,Eint,charge==1)/1000);
         fy->SetParameter(0,GetY0Rapidity(pdg_mom,Eint,charge==1));
         fy->SetParameter(1,GetSigmaRapidity(pdg_mom,Eint,charge==1));
-        yrap = fy->GetRandom()+y0;
+        yrap = fy->GetRandom();
         pt = fpt->GetRandom();
         massbw = fm->GetRandom();
         phi = gRandom->Rndm() * TMath::Pi() * 2;
@@ -369,8 +312,6 @@ void runFullSim(Int_t nevents = 5,
           Int_t crg= (iparticle->GetPdgCode()>0) ? 1 : -1;
           TLorentzVector *partVector = new TLorentzVector(0., 0., 0., 0.);
           partVector->SetXYZM(iparticle->Px(), iparticle->Py(), iparticle->Pz(), iparticle->GetMass());
-          //if(pdg_mom==333)
-          //std::cout<<"vX: "<<vX<<" vY: "<<vY<<" vZ: "<<vZ<<std::endl;
           if (!det->SolveSingleTrack(partVector->Pt(), partVector->Rapidity(), partVector->Phi(), iparticle->GetMass(), crg, vX, vY, vZ, 0, 1, 99)){  
             continue;
           }
@@ -384,13 +325,9 @@ void runFullSim(Int_t nevents = 5,
             continue;
           }
           trw->SetIndex(index_list[GetArrayPosition(kf)]);
-          //std::cout<<"setindex: "<<index_list[GetArrayPosition(kf)]<<" "<<trw->GetIndex()<<std::endl;
           trw->SetIndexMom(index_list[GetArrayPosition(pdg_mom)]);
-          //std::cout<<"setindex: "<<index_list[GetArrayPosition(pdg_mom)]<<" "<<trw->GetIndexMom()<<std::endl;
           trw->SetPdgMother((kf==pdg_mom) ? 0:pdg_mom);
-          //std::cout<<"setindex: "<<pdg_mom<<" "<<trw->GetPdgMother()<<std::endl;
           trw->SetPdg(kf);
-          //std::cout<<"setindex: "<<kf<<" "<<trw->GetPdg()<<std::endl;
           new (aarrtr[icount]) KMCProbeFwd(*trw);
           icount++;
         }
@@ -415,146 +352,4 @@ void runFullSim(Int_t nevents = 5,
   hPDGSurv2->Write();
   hPDGGen->Write();
   outfile->Close();
-}
-
-double GetTslope(int pdgParticle, double Eint, bool matter = true){
-  int index_pdg = 0;
-  int index_E = 0;
-  int counter = 0;
-  for(auto& pdg: pdg_mother){
-    if(pdgParticle == pdg){
-      index_pdg = counter;
-      break;
-    }
-    counter++;
-  }
-  counter = 0;
-  for(auto& E: Elab){
-    if(Eint == E){
-      index_E = counter;
-      break;
-    }
-    counter++;
-  }
-  return Tslope[matter ? 0 : 1][index_pdg][index_E];
-}
-
-double GetSigmaRapidity(int pdgParticle, double Eint, bool matter = true){
-  int index_pdg = 0;
-  int index_E = 0;
-  int counter = 0;
-  for(auto& pdg: pdg_mother){
-    if(pdgParticle == pdg){
-      index_pdg = counter;
-      break;
-    }
-    counter++;
-  }
-  counter = 0;
-  for(auto& E: Elab){
-    if(Eint == E){
-      index_E = counter;
-      break;
-    }
-    counter++;
-  }
-  return sigma_rapidity[matter ? 0 : 1][index_pdg][index_E];
-}
-
-double GetY0Rapidity(int pdgParticle, double Eint, bool matter = true){
-  int index_pdg = 0;
-  int index_E = 0;
-  int counter = 0;
-  for(auto& pdg: pdg_mother){
-    if(pdgParticle == pdg){
-      index_pdg = counter;
-      break;
-    }
-    counter++;
-  }
-  counter = 0;
-  for(auto& E: Elab){
-    if(Eint == E){
-      index_E = counter;
-      break;
-    }
-    counter++;
-  }
-  return y0_rapidity[matter ? 0 : 1][index_pdg][index_E];
-}
-
-double GetMultiplicity(int pdgParticle, double Eint, bool matter = true){
-  int index_pdg = 0;
-  int index_E = 0;
-  int counter = 0;
-  for(auto& pdg: pdg_mother){
-    if(pdgParticle == pdg){
-      index_pdg = counter;
-      break;
-    }
-    counter++;
-  }
-  counter = 0;
-  for(auto& E: Elab){
-    if(Eint == E){
-      index_E = counter;
-      break;
-    }
-    counter++;
-  }
-  return multiplicity[matter ? 0 : 1][index_pdg][index_E];
-}
-
-double GetY0(double Eint){
-  if (Eint == 20)
-    return 1.9;   // gaussian y mean - 20 GeV
-  else if (Eint == 40)
-    return 2.22; // gaussian y mean - 40 GeV
-  else if (Eint == 60)
-    return 2.42;  // gaussian y mean - 60 GeV
-  else if (Eint == 80)
-    return 2.57;  // gaussian y mean - 80 GeV
-  else if (Eint == 158)
-    return 2.9;   // gaussian y mean - 160 GeV
-  else if (Eint == 400)
-    return 3.37;  // gaussian y mean - 400 GeV
-  return 2.22;
-}
-
-
-void GetPDGDaughters(int pdgParticle, int pdgDaughters[], bool matter = true){
-  int index_pdg = 0;
-  int index_E = 0;
-  int counter = 0;
-  int sign = matter ? 1 : -1;
-  for(auto& pdg: pdg_mother){
-    if(pdgParticle == pdg){
-      index_pdg = counter;
-      for(int i = 0; i < 2; i++)
-        pdgDaughters[i] = pdg_daughter[index_pdg][i]*sign;
-    }
-    counter++;
-  }
-}
-
-
-int GetArrayPosition(int pdgParticle){
-  int counter = 3;
-
-  if(TMath::Abs(pdgParticle) == 211) 
-    return 0;
-  if(TMath::Abs(pdgParticle) == 321) 
-    return 1;
-  if(TMath::Abs(pdgParticle) == 2212) 
-    return 2;
-  
-  for(auto& pdg: pdg_mother){
-    if(pdgParticle == pdg)
-      return counter;
-    counter++;
-  }
-
-  return NParticles+3;
-
-
 }

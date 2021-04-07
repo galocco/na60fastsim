@@ -146,3 +146,26 @@ Double_t CosPointingAngle(Double_t vprim[3], Double_t vsec[3], TLorentzVector &p
         return cos;
     }
 }
+
+Double_t OpeningAngle(TLorentzVector &dau1, TLorentzVector &dau2)
+{
+    TVector3 track1(dau1.Px(), dau1.Py(), dau1.Pz());
+    TVector3 track2(dau2.Px(), dau2.Py(), dau2.Pz());
+
+    Double_t ptot2 = track1.Mag2() * track2.Mag2();
+    if (ptot2 <= 0)
+    {
+        printf("error");
+        return 0.0;
+    }
+    else
+        return track1.Dot(track2) / TMath::Sqrt(ptot2);
+}
+
+Double_t ArmenterosAlpha(TLorentzVector &dau_neg, TLorentzVector &dau_pos)
+{
+    Double_t pLPlus  = TMath::Sqrt(dau_pos.Px()*dau_pos.Px() + dau_pos.Py()*dau_pos.Py());
+    Double_t pLMinus = TMath::Sqrt(dau_neg.Px()*dau_neg.Px() + dau_neg.Py()*dau_neg.Py());
+
+    return (pLPlus-pLMinus)/(pLMinus+pLPlus);
+}
