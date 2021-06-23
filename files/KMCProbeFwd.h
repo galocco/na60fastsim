@@ -40,6 +40,8 @@ class KMCProbeFwd: public TObject {
   void      SetIndex(int index=0)                      {fIndex = index;}
   void      SetIndexMom(int index=0)                      {fIndexMom = index;}
   void      SetIsFromPrim(bool prim=true)                      {fIsFromPrim = prim;}
+  void      SetTOF(double tof=0)                      {fTOF = tof;}
+  void      SetL(double lenght=0)                      {fL = lenght;}
   Bool_t    GetIsFromPrim()                              {return fIsFromPrim;}
   Int_t     GetIndexMom()                              {return fIndexMom;}
   Int_t     GetIndex()                              {return fIndex;}
@@ -49,6 +51,8 @@ class KMCProbeFwd: public TObject {
   Double_t  GetWeight()                           const {return fWeight;}
   Double_t  GetChi2()                             const {return fChi2;}
   Double_t  GetChi2ITS()                          const {return fChi2ITS;}
+  Double_t  GetTOF()                                    {return fTOF;}
+  Double_t  GetL()                                      {return fL;}
 
   void      SetChi2(double chi2)                        {fChi2 = chi2;}
   void      SetChi2ITS(double chi2)                     {fChi2ITS = chi2;}
@@ -128,6 +132,8 @@ class KMCProbeFwd: public TObject {
   Int_t    fPdgMother; // pdg value of the mother (0 if it is primary)
   Int_t    fIndex; // n-th pdg-particle in a event
   Int_t    fIndexMom; // 
+  Double_t fTOF; //time of light
+  Double_t fL; //lenght travelled
   Bool_t   fIsFromPrim; // is the particle from a primary particle?
   Double_t fChi2;   // total chi2
   Double_t fChi2ITS;// total chi2 ITS

@@ -24,7 +24,7 @@ activelayer:vt	VT6		SILICON		24.3397	50e-4		5.e-4	5.e-4	0.99	0.3   15.
 activelayer:vt	VT7		SILICON		27.7842	50e-4		5.e-4	5.e-4	0.99	0.3   15.
 activelayer:vt	VT8		SILICON		31.2286	50e-4		5.e-4	5.e-4	0.99	0.3   15.
 activelayer:vt	VT9		SILICON		34.6731	50e-4		5.e-4	5.e-4	0.99	0.3   15.
-activelayer:vt	VT10		SILICON		38.1175	50e-4		5.e-4	5.e-4	0.99	0.5   30.
+activelayer:vt	VT10	SILICON		38.1175	50e-4		5.e-4	5.e-4	0.99	0.5   15.
 
 #activelayer:vt	VT2		SILICON		15.1175	50e-4		5.e-4	5.e-4	0.99	0.3   15.
 #activelayer:vt	VT3		SILICON		20.1175	50e-4		5.e-4	5.e-4	0.99	0.3   15.

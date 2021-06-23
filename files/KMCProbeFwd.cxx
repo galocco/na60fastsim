@@ -17,6 +17,8 @@ KMCProbeFwd::KMCProbeFwd()
   ,fIndex(0)
   ,fIndexMom(0)
   ,fIsFromPrim(true)
+  ,fTOF(0)
+  ,fL(0)
   ,fChi2(0)
   ,fChi2ITS(0)
   ,fMSX2X0Seen(0)
@@ -41,6 +43,8 @@ KMCProbeFwd::KMCProbeFwd(double *xyz, double *pxyz, Int_t sign, double errLoose)
   ,fIndex(0)
   ,fIndexMom(0)
   ,fIsFromPrim(true)
+  ,fTOF(0)
+  ,fL(0)
   ,fChi2(0)
   ,fChi2ITS(0)
   ,fMSX2X0Seen(0)
@@ -73,6 +77,8 @@ KMCProbeFwd::KMCProbeFwd(const KMCProbeFwd& src)
   ,fIndex(src.fIndex)
   ,fIndexMom(src.fIndexMom)
   ,fIsFromPrim(src.fIsFromPrim)
+  ,fTOF(src.fTOF)
+  ,fL(src.fL)
   ,fChi2(src.fChi2)
   ,fChi2ITS(src.fChi2ITS)
   ,fMSX2X0Seen(src.fMSX2X0Seen)
@@ -101,6 +107,8 @@ KMCProbeFwd& KMCProbeFwd::operator=(const KMCProbeFwd& src)
   fIndex = src.fIndex;
   fIndexMom = src.fIndexMom;
   fIsFromPrim = src.fIsFromPrim;
+  fTOF = src.fTOF;
+  fL = src.fL;
   fChi2 = src.fChi2;
   fChi2ITS = src.fChi2ITS;
   fMSX2X0Seen = src.fMSX2X0Seen;
@@ -127,6 +135,8 @@ void KMCProbeFwd::Reset()
   fIndex=0; 
   fIndexMom=0; 
   fIsFromPrim=true; 
+  fTOF=0; 
+  fL=0; 
   fChi2=0; 
   fChi2ITS=0;
   fMSX2X0Seen = 0;

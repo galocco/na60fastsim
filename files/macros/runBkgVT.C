@@ -22,15 +22,13 @@
 #include "TTree.h"
 #include "TParticle.h"
 #include "TDatabasePDG.h"
-
+#include "MeasurementUtils.h"
 #endif
 
 // Track Chi2Tot cut
 double ChiTot = 1.5;
-
+double zTOF = 1.0;
 double vX = 0, vY = 0, vZ = 0; // event vertex
-
-TString all_particle_name[3] = {"pion","kaon","proton"};
 
 TDatime dt;
 
@@ -61,6 +59,10 @@ void runBkgVT(Int_t nevents = 5,
   TH3F *h3DPBkg = new TH3F("h3DPBkg", "pt,y,phi pions", 50, 0., 5., 50, 0., 5., 50, 0, 2 * TMath::Pi());
   TH1F *hNevents = new TH1F("hNevents", "", 1, 0, 1);
   TH1F* hGenStat = new TH1F("hGenStat","",18,0.5,18.5);
+  TH1F *hnSigmaTOF = new TH1F("hnSigmaTOF", ";n#sigma_{#beta};counts", 100, -5., 5.);
+  TH2F *hTOF = new TH2F("hTOF", ";#it{p}(GeV/#it{c});TOF #beta;counts", 200, 0, 8, 300, 0.8, 1.15);
+
+  
   hGenStat->GetXaxis()->SetBinLabel(1,"#pi to gen");
   hGenStat->GetXaxis()->SetBinLabel(2,"#pi bad SolveSingleTrack");
   hGenStat->GetXaxis()->SetBinLabel(3,"#pi bad GetWinnerMCTrack");
@@ -152,6 +154,7 @@ void runBkgVT(Int_t nevents = 5,
   for (Int_t iev = 0; iev < nevents; iev++){
     aarrtr.Clear();
     printf(" ***************  ev = %d \n", iev);
+    double T0 = smearT(0);
     double pxyz[3];
     hNevents->Fill(0.5);
     if (simulateBg && (iev % refreshBg) == 0)
@@ -164,6 +167,7 @@ void runBkgVT(Int_t nevents = 5,
     double yrap, pt, phi;
     int charge;
     double mass;
+    double L;
     Int_t icount = 0;
     for (int itr = 0; itr < ntrPi; itr++){
       //gRandom->SetSeed(newseed++);//seed);
@@ -178,7 +182,6 @@ void runBkgVT(Int_t nevents = 5,
 
       TLorentzVector *ppi = new TLorentzVector(0., 0., 0., 0.);
       ppi->SetXYZM(pxyz[0], pxyz[1], pxyz[2], mass);
-      double py= pxyz[1];
       if (!det->SolveSingleTrack(ppi->Pt(), ppi->Rapidity(), ppi->Phi(), mass, charge, vX, vY, vZ, 0, 1, 99)){
         hGenStat->Fill(2);
         continue;
@@ -193,11 +196,12 @@ void runBkgVT(Int_t nevents = 5,
         continue;
       }
       trw->GetPXYZ(pxyz);
-      hResPy->Fill(pxyz[1]-py,ppi->Pt());
-      if(charge>0)
-        hResPyPos->Fill(pxyz[1]-py,ppi->Pt());
-      else
-        hResPyNeg->Fill(pxyz[1]-py,ppi->Pt());
+      double tHit= smearT(hasTOF(pxyz, mass, L, zTOF));
+      trw->SetTOF(tHit-T0);
+      trw->SetL(L);
+      double beta = betaTOF(L, tHit-T0);
+      hTOF->Fill(TMath::Sqrt(pxyz[0]*pxyz[0]+pxyz[1]*pxyz[1]+pxyz[2]*pxyz[2]),beta);
+      hnSigmaTOF->Fill((beta-betaGen(pxyz, mass))/sigmaBeta(zTOF));
       //printf("charge = %d, %f \n", charge, trw->GetCharge());
       new (aarrtr[icount]) KMCProbeFwd(*trw);
       hGenStat->Fill(5);
@@ -223,7 +227,6 @@ void runBkgVT(Int_t nevents = 5,
       
       TLorentzVector *pk = new TLorentzVector(0., 0., 0., 0.);
       pk->SetXYZM(pxyz[0], pxyz[1], pxyz[2], mass);
-      double py= pxyz[1];
       if (!det->SolveSingleTrack(pk->Pt(), pk->Rapidity(), pk->Phi(), mass, charge, vX, vY, vZ, 0, 1, 99)){
         hGenStat->Fill(8);
         continue;
@@ -237,7 +240,14 @@ void runBkgVT(Int_t nevents = 5,
         hGenStat->Fill(10);
         continue;
       }
+
+      double tHit= smearT(hasTOF(pxyz, mass, L, zTOF));
+      trw2->SetTOF(tHit-T0);
+      trw2->SetL(L);
       trw2->GetPXYZ(pxyz);
+      double beta = betaTOF(L, tHit-T0);
+      hTOF->Fill(TMath::Sqrt(pxyz[0]*pxyz[0]+pxyz[1]*pxyz[1]+pxyz[2]*pxyz[2]),beta);
+      hnSigmaTOF->Fill((beta-betaGen(pxyz, mass))/sigmaBeta(zTOF));
       //hResPy->Fill(pxyz[1]-py,pk->Pt());
       //printf("charge = %d, %f \n", charge, trw2->GetCharge());
       new (aarrtr[icount]) KMCProbeFwd(*trw2);
@@ -266,7 +276,6 @@ void runBkgVT(Int_t nevents = 5,
       
       TLorentzVector *pp = new TLorentzVector(0., 0., 0., 0.);
       pp->SetXYZM(pxyz[0], pxyz[1], pxyz[2], mass);
-      double py= pxyz[1];
 
       if (!det->SolveSingleTrack(pp->Pt(), pp->Rapidity(), pp->Phi(), mass, charge, vX, vY, vZ, 0, 1, 99)){
         hGenStat->Fill(14);
@@ -282,7 +291,13 @@ void runBkgVT(Int_t nevents = 5,
         continue;
       }
 
+      double tHit= smearT(hasTOF(pxyz, mass, L, zTOF));
+      trw3->SetTOF(tHit-T0);
+      trw3->SetL(L);
       trw3->GetPXYZ(pxyz);
+      double beta = betaTOF(L, tHit-T0);
+      hTOF->Fill(TMath::Sqrt(pxyz[0]*pxyz[0]+pxyz[1]*pxyz[1]+pxyz[2]*pxyz[2]),beta);
+      hnSigmaTOF->Fill((beta-betaGen(pxyz, mass))/sigmaBeta(zTOF));
       //hResPy->Fill(pxyz[1]-py,pp->Pt());
       //printf("charge = %d, %f \n", charge, trw3->GetCharge());
       new (aarrtr[icount]) KMCProbeFwd(*trw3);
@@ -311,5 +326,7 @@ void runBkgVT(Int_t nevents = 5,
   h3DPiBkg->Write();
   h3DKBkg->Write();
   h3DPBkg->Write();
+  hTOF->Write();
+  hnSigmaTOF->Write();
   outfile->Close();
 }
