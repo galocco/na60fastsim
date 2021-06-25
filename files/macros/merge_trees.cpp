@@ -35,21 +35,22 @@
 #include "TClonesArray.h"
 #endif
 
-void MergeTreeTracks(const char* trackTreeFile1="treeStrangeParticles.root",
-                     const char* trackTreeFile2="treeStrangeParticles.root",
+void MergeTreeTracks(TString trackTreeFile1="treeStrangeParticles.root",
+                     TString trackTreeFile2="treeStrangeParticles.root",
                      TString suffix = "_PHI_test",
                      Int_t clean = kFALSE){
 
+  TFile *tracks_file = new TFile(Form("treeStrangeParticles%s.root",suffix.Data()), "RECREATE");
   TTree *tree = new TTree("tree", "tree Sig");
   TClonesArray *arrtr = new TClonesArray("KMCProbeFwd");
   TClonesArray &aarrtr = *arrtr;
   tree->Branch("tracks", &arrtr);
-  TFile *filetree1 = new TFile(trackTreeFile1);
+  TFile *filetree1 = new TFile(trackTreeFile1.Data());
   TTree *tree1 = (TTree *)filetree1->Get("tree");
   TClonesArray *arr1 = 0;
   tree1->SetBranchAddress("tracks", &arr1);
   // signal tracks
-  TFile *filetree2 = new TFile(trackTreeFile2);
+  TFile *filetree2 = new TFile(trackTreeFile2.Data());
   TTree *tree2 = (TTree *)filetree2->Get("tree");
   TClonesArray *arr2 = 0;
   tree2->SetBranchAddress("tracks", &arr2);
@@ -73,12 +74,13 @@ void MergeTreeTracks(const char* trackTreeFile1="treeStrangeParticles.root",
     aarrtr.Clear();
     printf(" --> Event %d\n",iev);
   }
-  TFile *tracks_file = new TFile(Form("treeStrangeParticles%s.root",suffix.Data()), "RECREATE");
+  filetree1->Close();
+  filetree2->Close();
   tracks_file->cd();
   tree->Write();
   tracks_file->Close();
   if(clean){
-    std::cout<<"deleting the first file .root\n";
-	  gSystem->Exec(TString::Format("rm %s", trackTreeFile1.Data()));
+    std::cout<<"deleting the file "<<trackTreeFile1.Data()<<"\n";
+	  gSystem->Exec(Form("rm %s", trackTreeFile1.Data()));
   }
 }

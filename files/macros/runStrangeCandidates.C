@@ -963,13 +963,14 @@ void MakeCombinBkgCandidates3Body(const char* trackTreeFileBkg="treeBkgEvents_la
   TClonesArray *arrBkg = 0;
   treeBkg->SetBranchAddress("tracks", &arrBkg);
 
-  Int_t i0 = 0;
   Int_t nevents = treeBkg->GetEntries();
   // signal tracks
   TFile *filetreeSig = new TFile(trackTreeFileSig);
   TTree *treeSig = (TTree *)filetreeSig->Get("tree");
   TClonesArray *arrSig = 0;
   treeSig->SetBranchAddress("tracks", &arrSig);
+  if(treeSig->GetEntries()<nevents && fullsim)
+    nevents = treeSig->GetEntries();
   printf("Number of events in tree = %d\n",nevents);
   
   TDatime dt;
@@ -1051,7 +1052,7 @@ void MakeCombinBkgCandidates3Body(const char* trackTreeFileBkg="treeBkgEvents_la
   KMCProbeFwd recProbe[3];
   TLorentzVector parent, pair, daurec[3];
   Int_t trueCand = 0;
-  for (Int_t iev = i0; iev < nevents; iev++){
+  for (Int_t iev = 0; iev < nevents; iev++){
     hNevents->Fill(0.5);
     Double_t vprim[3] = {0, 0, 0};
     Double_t countCandInPeak = 0;
@@ -1147,7 +1148,9 @@ void MakeCombinBkgCandidates3Body(const char* trackTreeFileBkg="treeBkgEvents_la
             Float_t distPair = TMath::Sqrt(VTrd[0] * VTrd[0] + VTrd[1] * VTrd[1] + VTrd[2] * VTrd[2]);
             Float_t dist = TMath::Sqrt(VSec[0] * VSec[0] + VSec[1] * VSec[1] + VSec[2] * VSec[2]);
             //skip if the tertiary decay occurs before the secondary decay
-            if(dist>distPair)
+            if(dist < 1.)
+              continue;
+            if(dist > distPair)
               continue;
 
             Float_t distD = TMath::Sqrt((VSec[0]-VTrd[0]) * (VSec[0]-VTrd[0]) + (VSec[1]-VTrd[1]) * (VSec[1]-VTrd[1]) + (VSec[2]-VTrd[2]) * (VSec[2]-VTrd[2]));
@@ -1173,15 +1176,6 @@ void MakeCombinBkgCandidates3Body(const char* trackTreeFileBkg="treeBkgEvents_la
                 continue; 
 
               countCandInPeak++;
-              Double_t ipD = ImpParXY(vprim, VSec, parent);
-              hCosp->Fill(cosp, pt);
-
-              hDistXY->Fill(distXY, pt);
-              hDist->Fill(dist, pt);
-              hd0XY1->Fill(d0xy1, pt);
-              hd0XY2->Fill(d0xy2, pt);
-              hd0XY3->Fill(d0xy3, pt);
-
               Float_t dca = 0, dcaD = 0;
               Float_t d1 = recProbe[2*(1-iMassHyp)].GetX() - helper.GetX();
               Float_t d2 = recProbe[2*(1-iMassHyp)].GetY() - helper.GetY();
@@ -1211,6 +1205,13 @@ void MakeCombinBkgCandidates3Body(const char* trackTreeFileBkg="treeBkgEvents_la
               if (d0x < 0)
                 bxyD *= -1;
 
+
+              hCosp->Fill(cosp, pt);
+              hDistXY->Fill(distXY, pt);
+              hDist->Fill(dist, pt);
+              hd0XY1->Fill(d0xy1, pt);
+              hd0XY2->Fill(d0xy2, pt);
+              hd0XY3->Fill(d0xy3, pt);
 
               trueCand = IsTrueCandidate(tr1, tr2, tr3, pdgMother, pdgDaughter, iMassHyp);
               if (writeNtuple){
@@ -1280,6 +1281,8 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFileBkg="treeBkgEvents_la
   TTree *treeSig = (TTree *)filetreeSig->Get("tree");
   TClonesArray *arrSig = 0;
   treeSig->SetBranchAddress("tracks", &arrSig);
+  if(treeSig->GetEntries()<nevents && fullsim)
+    nevents = treeSig->GetEntries();
 
   TDatime dt;
   static UInt_t seed = dt.Get();
@@ -1452,6 +1455,7 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFileBkg="treeBkgEvents_la
         Double_t betaDau2 = 0; 
 
         for(Int_t iMassHyp=0; iMassHyp < swap_mass; iMassHyp++){
+          countCand++;
           Int_t iNeg=-1;
           if(iMassHyp==0){
             daurec[0].SetXYZM(pxyz[0], pxyz[1], pxyz[2], TDatabasePDG::Instance()->GetParticle(pdg_dau[1])->Mass());
@@ -1471,44 +1475,27 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFileBkg="treeBkgEvents_la
           
           parent = daurec[0];
           parent += daurec[1];
-          countCand++;
           Float_t pt = parent.Pt();
           Float_t invMass = parent.M();
           if(invMass<0.96*massM  || invMass>1.04*massM) continue;
           Float_t y = 0.5 * TMath::Log((parent.E() + parent.Pz()) / (parent.E() - parent.Pz()));
-          hYPtRecoAll->Fill(y, pt);
-          hPtRecoAll->Fill(pt);
-          hMassAll->Fill(invMass);
           Float_t d1 = recProbe[1].GetX() - recProbe[0].GetX();
           Float_t d2 = recProbe[1].GetY() - recProbe[0].GetY();
           Float_t d3 = recProbe[1].GetZ() - recProbe[0].GetZ();
           Float_t dca = sqrt(d1 * d1 + d2 * d2 + d3 * d3);
           
-          hDCA->Fill(dca, pt);
-          hDCAx->Fill(d1, pt);
-          hDCAy->Fill(d2, pt);
-          hDCAz->Fill(d3, pt);
 
           Double_t xP = 0, yP = 0, zP = 0;
           ComputeVertex(recProbe[0],recProbe[1],xP,yP,zP); 
           Float_t dist = TMath::Sqrt(xP * xP + yP * yP + zP * zP);
+          if(dist < 0.5 && pdgMother!=333)
+            continue;
           Float_t distXY = TMath::Sqrt(xP * xP + yP * yP);
           Double_t vsec[3] = {xP, yP, zP};
           Double_t thetad = OpeningAngle(daurec[0],daurec[1]);
-          hMassVsOpen->Fill(invMass, TMath::ACos(thetad));
-          Double_t arm = ArmenterosAlpha(daurec[0],daurec[1]);
-          //Double_t ipD = ImpParXY(vprim, vsec, parent);
-          //Double_t cts = CosThetaStar(parent,daurec[iNeg],pdgMother,pdg_dau[0],pdg_dau[1]);
           Double_t cosp = CosPointingAngle(vprim, vsec, parent);
-
-          hCosp->Fill(cosp, pt);
-
-          hDistXY->Fill(distXY, pt);
-          hDistXYPlane->Fill(distXY, zP);
-          hDistVsPt->Fill(dist, pt);
-          hDistzVsPt->Fill(zP, pt);
-          hDist->Fill(dist);
-          hDistz->Fill(zP);
+          if(cosp < 0.999 && pdgMother!=333)
+            continue;
           
           recProbeTo0[0] = recProbe[0];
           recProbeTo0[0].PropagateToZBxByBz(0);
@@ -1526,9 +1513,25 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFileBkg="treeBkgEvents_la
           if (d0x2 < 0)
             d0xy2 *= -1;
           
+          hYPtRecoAll->Fill(y, pt);
+          hPtRecoAll->Fill(pt);
+          hMassAll->Fill(invMass);
+          hDCA->Fill(dca, pt);
+          hDCAx->Fill(d1, pt);
+          hDCAy->Fill(d2, pt);
+          hDCAz->Fill(d3, pt);
+          hMassVsOpen->Fill(invMass, TMath::ACos(thetad));
+          hCosp->Fill(cosp, pt);
+          hDistXY->Fill(distXY, pt);
+          hDistXYPlane->Fill(distXY, zP);
+          hDistVsPt->Fill(dist, pt);
+          hDistzVsPt->Fill(zP, pt);
+          hDist->Fill(dist);
+          hDistz->Fill(zP);
           hd0XY1->Fill(d0xy1, pt);
           hd0XY2->Fill(d0xy2, pt);
 
+          countCandInPeak++;
           if (writeNtuple){
             arrnt[0] = invMass;
             arrnt[1] = pt;
