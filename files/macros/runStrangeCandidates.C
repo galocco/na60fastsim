@@ -1025,10 +1025,10 @@ void MakeCombinBkgCandidates3Body(const char* trackTreeFileBkg="treeBkgEvents_la
 
   TFile *fnt = 0x0;
   TNtuple *ntcand = 0x0;
-  Float_t arrnt[12];
+  Float_t arrnt[13];
   if (writeNtuple){
     fnt = new TFile(Form("fntBkg%s.root",suffix.Data()), "recreate");
-    ntcand = new TNtuple("ntcand", "ntcand", "m:pt:rapidity:dist:distD:cosp:cospD:bxy:bxyD:dca:dcaD:true", 32000);
+    ntcand = new TNtuple("ntcand", "ntcand", "m:pt:rapidity:dist:distD:cosp:cospD:bxy:bxyD:dca:dcaD:mD:true", 32000);
                                              
   }
 
@@ -1172,7 +1172,7 @@ void MakeCombinBkgCandidates3Body(const char* trackTreeFileBkg="treeBkgEvents_la
               Double_t cosp = CosPointingAngle(vprim, VSec, parent);
               Double_t cospD = CosPointingAngle(VSec, VTrd, pair);
               //skip if the cosine of the pointing angle is too small
-              if(cosp < 0.999)
+              if(cosp < 0.9999)
                 continue; 
 
               countCandInPeak++;
@@ -1226,7 +1226,8 @@ void MakeCombinBkgCandidates3Body(const char* trackTreeFileBkg="treeBkgEvents_la
                 arrnt[8] = bxyD;
                 arrnt[9] = dca;
                 arrnt[10] = dcaD;
-                arrnt[11] = trueCand;
+                arrnt[11] = massPair;
+                arrnt[12] = trueCand;
                 
                 ntcand->Fill(arrnt);
               }
@@ -1488,13 +1489,13 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFileBkg="treeBkgEvents_la
           Double_t xP = 0, yP = 0, zP = 0;
           ComputeVertex(recProbe[0],recProbe[1],xP,yP,zP); 
           Float_t dist = TMath::Sqrt(xP * xP + yP * yP + zP * zP);
-          if(dist < 0.5 && pdgMother!=333)
-            continue;
+          //if(dist < 0.5 && pdgMother!=333)
+          //  continue;
           Float_t distXY = TMath::Sqrt(xP * xP + yP * yP);
           Double_t vsec[3] = {xP, yP, zP};
           Double_t thetad = OpeningAngle(daurec[0],daurec[1]);
           Double_t cosp = CosPointingAngle(vprim, vsec, parent);
-          if(cosp < 0.999 && pdgMother!=333)
+          if(cosp < 0.99 && pdgMother!=333)
             continue;
           
           recProbeTo0[0] = recProbe[0];

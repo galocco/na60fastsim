@@ -28,7 +28,7 @@
 #include "TDatabasePDG.h"
 #include "Math/Vector3D.h"
 #include "Math/Vector4D.h"
-#include "KFParticle.h"
+//#include "KFParticle.h"
 //#include "DCAFitterN.h"
 
 // settings for signal generation
@@ -51,11 +51,11 @@ double Elab[NEnergy] = {20,30,40,80,158};
 double Tslope[2][NParticles][NEnergy] = {{{196.8,237.4,244.6,239.8,298.7},{0,0,229, 223.1, 229},{244,249,258,265,301},{0,0,218,0,267},{221,233,222,227,277}},//matter e rapidity distribution [matter/antimatter][particle][beam energy]
                                          {{196.8,237.4,244.6,239.8,298.7},{0,0,226,217,226},{339,284,301,292,303},{0,0,218,0,259},{311,277,255,321,0}}};//antimatter
 //sigma parameter of the gaussians of th                    phi                        K                       Lambda                Omega                    Xi
-double sigma_rapidity[2][NParticles][NEnergy] = {{{0.425,0.538,0.696,0.658,1.451},{0,0,0.674, 0.743, 0.84},{0.51,0.66,0.91,0.87,0},{0,0,0.6,0,1.2},{0.45,0.56,0.76,0.71,1.18}},//matter
-                                                 {{0.425,0.538,0.696,0.658,1.451},{0,0,0,0,0},{0,0,0.71,0.85,0.95},{0,0,0.6,0,1.0},{0,0,0,0,0}}};//antimatter
+double sigma_rapidity[2][NParticles][NEnergy] = {{{0.425,0.538,0.696,0.658,1.451},{0,0,0.725,0.792,0.88},{0.51,0.66,0.91,0.87,0},{0,0,0.6,0,1.2},{0.45,0.56,0.76,0.71,1.18}},//matter
+                                                 {{0.425,0.538,0.696,0.658,1.451},{0,0,0.635,0.705,0.81},{0,0,0.71,0.85,0.95},{0,0,0.6,0,1.0},{0,0,0,0,0}}};//antimatter
 //mu paramter of the gaussian of the rapidity distribution [matter/antimatter][particle][beam energy]
 //                                                       phi                        K                   Lambda                   Omega                    Xi
-double y0_rapidity[2][NParticles][NEnergy] = {{{0.425,0.538,0.487,0.682,0.},{0,0,0.619, 0.701, 0.775},{0.49,0.59,0.65,0.94,0},{0,0,0,0,0},{0.45,0.47,0.54,0.68,0}},//matter
+double y0_rapidity[2][NParticles][NEnergy] = {{{0.425,0.538,0.487,0.682,0.},{0,0,0.694,0.742,0.839},{0.49,0.59,0.65,0.94,0},{0,0,0,0,0},{0.45,0.47,0.54,0.68,0}},//matter
                                               {{0.425,0.538,0.487,0.682,0.},{0,0,0.569,0.668,0.727},{0,0,0,0,0},{0,0,0.0,0},{0,0,0,0,0}}};//antimatter
 //multiplicity for event [matter/antimatter][particle][beam energy]
 //                                                       phi                        K                   Lambda                   Omega                    Xi
@@ -155,7 +155,10 @@ double GetTslope(int pdgParticle, double Eint, bool matter = true){
     }
     counter++;
   }
-  return Tslope[matter ? 0 : 1][index_pdg][index_E];
+  if(TMath::Abs(pdgParticle)==310)
+    return (Tslope[0][index_pdg][index_E]+Tslope[1][index_pdg][index_E])/2.;
+  else
+    return Tslope[matter ? 0 : 1][index_pdg][index_E];
 }
 
 double GetSigmaRapidity(int pdgParticle, double Eint, bool matter = true){
@@ -177,7 +180,11 @@ double GetSigmaRapidity(int pdgParticle, double Eint, bool matter = true){
     }
     counter++;
   }
-  return sigma_rapidity[matter ? 0 : 1][index_pdg][index_E];
+  
+  if(TMath::Abs(pdgParticle)==310)
+    return (sigma_rapidity[0][index_pdg][index_E]+sigma_rapidity[1][index_pdg][index_E])/2.;
+  else
+    return sigma_rapidity[matter ? 0 : 1][index_pdg][index_E];
 }
 
 double GetBRatio(int pdgParticle){
@@ -212,7 +219,10 @@ double GetY0Rapidity(int pdgParticle, double Eint, bool matter = true){
     }
     counter++;
   }
-  return y0_rapidity[matter ? 0 : 1][index_pdg][index_E];
+  if(TMath::Abs(pdgParticle)==310)
+    return (y0_rapidity[0][index_pdg][index_E]+y0_rapidity[1][index_pdg][index_E])/2.;
+  else
+    return y0_rapidity[matter ? 0 : 1][index_pdg][index_E];
 }
 
 double GetMultiplicity(int pdgParticle, double Eint, bool matter = true){
@@ -234,7 +244,11 @@ double GetMultiplicity(int pdgParticle, double Eint, bool matter = true){
     }
     counter++;
   }
-  return multiplicity[matter ? 0 : 1][index_pdg][index_E];
+  
+  if(TMath::Abs(pdgParticle)==310)
+    return (multiplicity[0][index_pdg][index_E]+multiplicity[1][index_pdg][index_E])/2.;
+  else
+    return multiplicity[matter ? 0 : 1][index_pdg][index_E];
 }
 
 double GetY0(double Eint){
@@ -269,7 +283,7 @@ void GetPDGDaughters(int pdgParticle, int pdgDaughters[], bool matter = true){
     counter++;
   }
 }
-
+/*
 Double_t KFVertexer(KMCProbeFwd kProbe[], Double_t kMasses[], int n_dau, float bz, bool verbose = false){
   AliExternalTrackParam kTrack[3];
   double posmom[6],cov[21];
@@ -281,7 +295,7 @@ Double_t KFVertexer(KMCProbeFwd kProbe[], Double_t kMasses[], int n_dau, float b
     kTrack[iT].GetXYZ(posmom);
     kTrack[iT].GetPxPyPz(posmom+3);
     kTrack[iT].GetCovarianceXYZPxPyPz(cov);
-    helper[iT].Create(posmom,cov,kTrack[iT].Charge(),kMasses[iT]);
+    helper[iT].Create(posmom, cov, kTrack[iT].Charge(),kMasses[iT]);
     helper[iT].Chi2() = kProbe[iT].GetNormChi2ITS()*kProbe[iT].GetNITSHits();
     helper[iT].NDF() = kProbe[iT].GetNITSHits();
     helper[iT].SetField(bz);
@@ -305,12 +319,12 @@ Double_t KFVertexer(KMCProbeFwd kProbe[], Double_t kMasses[], int n_dau, float b
     twoCandidate.AddDaughter(helper[1]);
     KFParticle threeCandidate{twoCandidate};
     threeCandidate.AddDaughter(helper[0]);
-    return threeCandidate.GetMass();
+      return threeCandidate.GetMass();
 
   }
 }
 
-/*
+
 Double_t O2Vertexer(AliExternalTrackParam kTrack[], Double_t kMasses[], int n_dau, float bz){  
   o2::vertexing::DCAFitter3 fVertexer3;
   o2::vertexing::DCAFitter2 fVertexer2;

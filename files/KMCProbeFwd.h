@@ -151,7 +151,7 @@ class KMCProbeFwd: public TObject {
   //
   static Int_t    fgNITSLayers;
   static Double_t fgMissingHitPenalty;  //
-  ClassDef(KMCProbeFwd,1)
+  ClassDef(KMCProbeFwd,2)
 };
 
 //_______________________________________________________________________
