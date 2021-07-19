@@ -36,8 +36,8 @@
 const double yminSG = -2.; 
 const double ymaxSG = 8.;
 // pT range
-const double ptminSG = 0.;
-const double ptmaxSG = 3.; 
+const double ptminSG = 0;
+const double ptmaxSG = 3; 
 
 //number of energy of the colliding beam
 const int NEnergy = 5;
@@ -534,24 +534,6 @@ int IsTrueCandidate(KMCProbeFwd* tr1, KMCProbeFwd* tr2, int pdgMother, int pdg_d
   else
     return 0;
 }
-
-
-bool gen_event(Int_t &iev, TTree* tree, TClonesArray &aarrtr, Int_t &gen_part, Double_t &T0, Int_t &icount, Int_t &nevents, Int_t &multi_times_br){
-  while(gen_part == 0)
-  {
-    iev++;
-    if(iev%100==0) printf(" ***************  ev = %d of %d \n", iev, nevents);
-    icount = 0;
-    tree->Fill();
-    aarrtr.Clear();
-    gen_part  = gRandom->Poisson(multi_times_br);
-    T0 = smearT(0);
-    if(iev>nevents)
-      return false;
-  }
-  return true;
-}
-
 
 bool SetEvent(Int_t nevents, Int_t &iev, TTree* tree, TClonesArray &aarrtr, Double_t &T0, Int_t &gen_part, Double_t multi_times_br, Int_t &icount){
   while(gen_part == 0)

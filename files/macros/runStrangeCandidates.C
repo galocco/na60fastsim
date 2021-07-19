@@ -53,6 +53,7 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
   
   // Generate strange particle signals and simulate detector response for decay tracks
   bool matter = pdgParticle > 0;
+  int pdg_sign = (matter) ? 1 : -1;
   pdgParticle = TMath::Abs(pdgParticle);
   int pdg_unstable_dau = 0;
   int nbody = GetNBody(pdgParticle, pdg_unstable_dau);
@@ -75,10 +76,10 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
     lifetime = TMath::Power(1.64, -10);
   TF1 *fpt = new TF1("fpt", "x*exp(-TMath::Sqrt(x**2+[0]**2)/[1])", ptminSG, ptmaxSG);
   fpt->SetParameter(0,mass);
-  fpt->SetParameter(1, GetTslope(pdgParticle,Eint,matter)/1000);
+  fpt->SetParameter(1, GetTslope(pdgParticle,Eint, matter)/1000);
   TF1 *fy = new TF1("fy"," exp(-0.5*((x-[0]-[2])/[1])**2)+exp(-0.5*((x+[0]-[2])/[1])**2)", yminSG, ymaxSG);
-  fy->SetParameter(0, GetY0Rapidity(pdgParticle, Eint, matter));
-  fy->SetParameter(1, GetSigmaRapidity(pdgParticle, Eint, matter));
+  fy->SetParameter(0, GetY0Rapidity(pdgParticle, Eint,  matter));
+  fy->SetParameter(1, GetSigmaRapidity(pdgParticle, Eint,  matter));
   fy->SetParameter(2, GetY0(Eint));
   TF1 *fm = new TF1("fm","1/((x-[0])**2+([1]/2)**2)",mass*0.975,mass*1.025);
   fm->SetParameter(0, mass);
@@ -162,9 +163,9 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
   TClonesArray *particles = new TClonesArray("TParticle", 1000);
   TLorentzVector *mom = new TLorentzVector();
   
-  
+  const int Nbin = 20;
   TH2F* hYPtGen = new TH2F("hYPtGen", "y-#it{p}_{T} corr match;y;#it{p}_{T};counts", 80, 1.0, 5.4, 40, ptminSG, ptmaxSG);
-  TH1D* hPtGen  = new TH1D("hPtGen", "#it{p}_{Tgen};#it{p}_{T} (GeV/#it{c});counts", 40, ptminSG, ptmaxSG);
+  TH1D* hPtGen  = new TH1D("hPtGen", "#it{p}_{Tgen};#it{p}_{T} (GeV/#it{c});counts", Nbin, ptminSG, ptmaxSG);
   TH1D* hPtFake = new TH1D("hPtFake", "#it{p}_{T};#it{p}_{T} (GeV/#it{c});counts", 40, ptminSG, ptmaxSG);
   TH1D* hPxFake = new TH1D("hPxFake", "#it{p}_{x};#it{p}_{T} (GeV/#it{c});counts", 40, ptminSG, ptmaxSG);
   TH1D* hPyFake = new TH1D("hPyFake", "#it{p}_{y};#it{p}_{T} (GeV/#it{c});counts", 40, ptminSG, ptmaxSG);
@@ -172,8 +173,8 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
   TH1D* hYFake = new TH1D("hYFake", ";y;counts", 160., yminSG,ymaxSG);  
   TH1D* hYGen = new TH1D("hYGen", "y full phase space;y;counts", 160., yminSG,ymaxSG);  
   TH1D* hMGen = new TH1D("hMGen", "Mass all match;m (GeV/#it{c}^{2});counts", 1000, 0.9*mass, 1.1*mass);
-  TH1D* hPtEff = new TH1D("hPtEff", "#it{p}_{T} efficiency;#it{p}_{T} (GeV/#it{c});counts", 40., ptminSG, ptmaxSG);
-  TH1D* hYEff = new TH1D("hYEff", "y efficiency;counts", 160., yminSG,ymaxSG);
+  TH1D* hPtEff = new TH1D("hPtEff", ";#it{p}_{T} (GeV/#it{c}); Efficiency x Acceptance", Nbin, ptminSG, ptmaxSG);
+  TH1D* hYEff = new TH1D("hYEff", ";#it{y}; Efficiency x Acceptance", 160., yminSG,ymaxSG);
   TH2F* hYPtRecoAll = new TH2F("hYPtRecoAll", "y-#it{p}_{T} all match;y;#it{p}_{T};counts", 80, 1.0, 5.4, 40, ptminSG, ptmaxSG);
   TH1D* hPtRecoAll = new TH1D("hPtRecoAll", "Reconstructed #it{p}_{T} all match;#it{p}_{T};counts", 40, ptminSG, ptmaxSG);  
   TH1D* hPtGenRecoAll = new TH1D("hPtGenRecoAll", "Generated #it{p}_{T} all match;#it{p}_{T};counts", 40, ptminSG, ptmaxSG);
@@ -296,7 +297,7 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
   Float_t arrntgen[4];
   //read the pdg code of the daughters
   Int_t pdg_dau[2] = {0,0};
-  GetPDGDaughters(pdgParticle, pdg_dau,matter);
+  GetPDGDaughters(pdgParticle, pdg_dau, matter);
   //if decay daughter is unstable read the pdg code of its daughters
   Int_t pdg_dau2[2] = {0, 0};
   Int_t pdgDaughter[3] = {0, 0, 0};
@@ -313,6 +314,8 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
   if(nbody==2){
     massDau[0] = TDatabasePDG::Instance()->GetParticle(pdg_dau[0])->Mass();//negative
     massDau[1] = TDatabasePDG::Instance()->GetParticle(pdg_dau[1])->Mass();//positive
+    std::cout<<pdg_dau[0]<<" "<<massDau[0]<<std::endl;
+    std::cout<<pdg_dau[1]<<" "<<massDau[1]<<std::endl;
   }
   else{
     massDau[0] = TDatabasePDG::Instance()->GetParticle(pdgDaughter[0])->Mass();
@@ -352,7 +355,7 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
     mom->SetPxPyPzE(pxGen, pyGen, pzGen, en);
     Int_t np;
     do{
-      fDecayer->Decay(pdgParticle, mom);
+      fDecayer->Decay(pdgParticle*pdg_sign, mom);
       np = fDecayer->ImportParticles(particles);
     } while (np < 0);
     istrange++;
@@ -379,7 +382,6 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
       //check if the particle is one of the final decay products
       bool IsDecayDaughter = pdg_dau[0] == kf || pdg_dau[1] == kf || pdg_dau2[0] == kf || pdg_dau2[1] == kf;
       bool IsStable = kf != pdg_unstable_dau;
-      
       if (IsDecayDaughter && IsStable){
         Int_t crg = (iparticle->GetPdgCode() > 0) ? 1 : -1;
         Double_t ptdau = iparticle->Pt();
@@ -387,7 +389,7 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
         Int_t crg_index = (crg == 1) ? 0 : 1;
         if(nbody == 2)
         {
-          daurecswapmass[crg_index].SetXYZM(iparticle->Px(), iparticle->Py(), iparticle->Pz(),(iparticle->GetMass() == massDau[1])? massDau[0] : massDau[1]);
+          daurecswapmass[crg_index].SetXYZM(iparticle->Px(), iparticle->Py(), iparticle->Pz(), (iparticle->GetMass() == massDau[1])? massDau[0] : massDau[1]);
           hptdau[crg_index]->Fill(ptdau,ptGen);
           hydau[crg_index]->Fill(ydau);
         }
@@ -948,7 +950,7 @@ void MakeCombinBkgCandidates3Body(const char* trackTreeFileBkg="treeBkgEvents_la
             TString suffix = "_Omega",
             const char *setup = "../setups/setup_EHN1-H8_short_10pixel_1.5T_BB.txt",
             Int_t pdgMother = 3334,
-            Int_t fullsim = kTRUE,
+            Int_t fullsim = kFALSE,
 			      Int_t writeNtuple = kTRUE){
 
   Int_t pdg_unstable_dau;
@@ -1070,7 +1072,7 @@ void MakeCombinBkgCandidates3Body(const char* trackTreeFileBkg="treeBkgEvents_la
       else
         tr1 = (KMCProbeFwd *)arrSig->At(itr-arrentrBkg);
       Float_t ch1 = tr1->GetCharge();
-
+      if (ch1/TMath::Abs(ch1) != chMother/TMath::Abs(chMother)) continue;
       for (Int_t itr2 = itr+1; itr2 < arrentrBkg+arrentrSig; itr2++){
         KMCProbeFwd *tr2;
         if(itr2<arrentrBkg)
@@ -1090,7 +1092,6 @@ void MakeCombinBkgCandidates3Body(const char* trackTreeFileBkg="treeBkgEvents_la
           Float_t ch3 = tr3->GetCharge();
           // convention: charge signs are ordered as +-+ or -+-
           if (ch3 * ch2 > 0) continue;
-          if ((ch1 + ch2 + ch3) != chMother) continue;
 
           ////////////////////////////////
           recProbe[0] = *tr1;
@@ -1265,7 +1266,7 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFileBkg="treeBkgEvents_la
             TString suffix = "_PHI_test",
             int pdgMother = 333,
             const char *setup = "../setups/setup-EHN1_BetheBloch.txt",
-            Int_t fullsim = kTRUE,
+            Int_t fullsim = kFALSE,
 			      Int_t writeNtuple = kTRUE,
             Int_t writeSparse = kTRUE){
 
@@ -1495,7 +1496,7 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFileBkg="treeBkgEvents_la
           Double_t vsec[3] = {xP, yP, zP};
           Double_t thetad = OpeningAngle(daurec[0],daurec[1]);
           Double_t cosp = CosPointingAngle(vprim, vsec, parent);
-          if(cosp < 0.99 && pdgMother!=333)
+          if(cosp < 0.9999 && pdgMother!=333)
             continue;
           
           recProbeTo0[0] = recProbe[0];
