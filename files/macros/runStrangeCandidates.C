@@ -334,6 +334,7 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
   Double_t T0 = smearT(0);
   Int_t iev = 0;
   Int_t istrange = 0; 
+  Int_t old_update = 0;
   while (SetEvent(nevents, iev, tree, aarrtr, T0, gen_part, multi_times_br, icount)){
     gen_part--;
     hNevents->Fill(0.5);
@@ -341,7 +342,11 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
     int nrec = 0;
     int nfake = 0;
     bool IsReconstructable = true;
-    if (simulateBg && iev%refreshBg==0) det->GenBgEvent(0. ,0. , PrimVtxZ);
+    
+    if (simulateBg && iev%refreshBg==0 && old_update!=iev){
+      old_update = iev;
+      det->GenBgEvent(0. ,0. , PrimVtxZ);
+    }
 
     Double_t ptGen = fpt->GetRandom(ptminSG, ptmaxSG); 
     Double_t yGen = fy->GetRandom(yminSG, ymaxSG);
@@ -455,7 +460,11 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
         trw->SetPdg(kf);
         trw->SetPdgMother(pdgParticle);
 
-        double test[3] = {iparticle->Px(), iparticle->Py(), iparticle->Pz()};
+        
+        pxyz[0] = iparticle->Px();  
+        pxyz[1] = iparticle->Py();  
+        pxyz[2] = iparticle->Pz();
+        
         tHit = smearT(hasTOF(pxyz, iparticle->GetMass(), L, zTOF));
         trw->SetTOF(tHit-T0);
         trw->SetL(L);
