@@ -48,6 +48,18 @@ class KMCProbeFwd: public TObject {
   Double_t  GetChi2()                             const {return fChi2;}
   Double_t  GetChi2ITS()                          const {return fChi2ITS;}
 
+  void      SetPdg(int pdg=211)                      {fPdg = pdg;}
+  void      SetPdgMother(int pdg=310)                      {fPdgMother = pdg;}
+  void      SetIndex(int index=0)                      {fIndex = index;}
+  void      SetIndexMom(int index=0)                      {fIndexMom = index;}
+  void      SetIsFromPrim(bool prim=true)                      {fIsFromPrim = prim;}
+
+  Bool_t    GetIsFromPrim()                              {return fIsFromPrim;}
+  Int_t     GetIndexMom()                              {return fIndexMom;}
+  Int_t     GetIndex()                              {return fIndex;}
+  Int_t     GetPdg()                              {return fPdg;}
+  Int_t     GetPdgMother()                              {return fPdgMother;}
+
   void      SetChi2(double chi2)                        {fChi2 = chi2;}
   void      SetChi2ITS(double chi2)                     {fChi2ITS = chi2;}
   void      AddChi2(double chi2)                        {fChi2 += chi2;}
@@ -142,6 +154,12 @@ class KMCProbeFwd: public TObject {
   Int_t    fClID[kMaxITSLr]; // id's of attached clusters
   Float_t  fChi2CorrCl[kMaxITSLr]; // track-cluster chi2 for correct clusters
   Float_t  fChi2WinCl[kMaxITSLr]; // track-cluster chi2 for winner clusters  
+  Int_t    fPdg; // pdg value of the particle
+  Int_t    fPdgMother; // pdg value of the mother (0 if it is primary)
+  Int_t    fIndex; // n-th pdg-particle in a event
+  Int_t    fIndexMom; // 
+  Bool_t   fIsFromPrim; // is the particle from a primary particle?
+
   AliExternalTrackParam fTrack;  // track params
   //
   static Int_t    fgNITSLayers;

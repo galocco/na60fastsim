@@ -1,4 +1,5 @@
 #include "KMCPixelPlane.h"
+#include <iostream>
 
 const float KMCPixelPlane::XSizeTot = 13.5996;
 const float KMCPixelPlane::YSizeTot = 13.6948; // readout side
@@ -25,6 +26,12 @@ KMCPixelPlane::KMCPixelPlane(const char *name, float zpos, float thickness,
 			     ) : KMCPolyLayer(name)
 {
   // subtrate settings
+
+  std::cout<<"KMCPixelPlane "<<name<<"\n";
+  std::cout<<"thickness*density/radL: "<<thickness*density/radL<<std::endl;
+  std::cout<<"radL: "<<radL<<std::endl;
+  std::cout<<"thickness: "<<thickness<<std::endl;
+  std::cout<<"density: "<<density<<std::endl;
   SetZ(zpos);
   SetThickness(thickness);
   SetX2X0( radL>0 ? thickness*density/radL : 0);
