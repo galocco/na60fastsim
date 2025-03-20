@@ -2,7 +2,7 @@
 #include <TLorentzVector.h>
 #include "AliStrLine.h"
 #include "AliVertexerTracks.h"
-#include "KMCProbeFwd.h"
+#include "../KMCProbeFwd.h"
 #endif
 
 // void ComputeVertex(KMCProbeFwd &t0, KMCProbeFwd &t1, Double_t &xV, Double_t &yV, Double_t &zV);

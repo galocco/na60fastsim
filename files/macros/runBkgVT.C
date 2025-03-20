@@ -33,8 +33,8 @@ double vX = 0, vY = 0, vZ = 0; // event vertex
 TDatime dt;
 
 void runBkgVT(Int_t nevents = 100, 
-	      double Eint = 160.,
-	      const char *setup = "setup-10um-itssa_Eff1.txt",
+	      double Eint = 40.,
+            const char *setup = "/home/giacomo/na60fastsim/files/setups/setup-proposal.txt",
 	      int minITShits=4,
 	      double chi2Cut = 1.5,
 	      bool simulateBg=kTRUE)
@@ -97,11 +97,11 @@ void runBkgVT(Int_t nevents = 100,
   // set chi2 cuts
   det->SetMaxChi2Cl(10.);  // max track to cluster chi2
   det->SetMaxChi2NDF(3.5); // max total chi2/ndf
-  det->SetMaxChi2Vtx(20);  // fiducial cut on chi2 of convergence to vtx
+  det->SetMaxChi2Vtx(-20);  // fiducial cut on chi2 of convergence to vtx
   
   // IMPORTANT FOR NON-UNIFORM FIELDS
   det->SetDefStepAir(1);
-  det->SetMinP2Propagate(1); //NA60+
+  //det->SetMinP2Propagate(1); //NA60+
   //det->SetMinP2Propagate(2); //NA60
   //
   det->SetIncludeVertex(kFALSE); // count vertex as an extra measured point

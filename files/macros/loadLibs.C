@@ -12,5 +12,7 @@ void loadLibs(){
   gROOT->ProcessLine(".L ../KMCPixelPlane.cxx+");
   gROOT->ProcessLine(".L ../KMCMagnetBuilder.cxx+");
   gROOT->ProcessLine(".L ../KMCDetectorFwd.cxx+");
+  gROOT->ProcessLine(".L ../KMCFlukaParser.cxx+");
+  gROOT->ProcessLine(".L ../GenMUONLMR.cxx+");
  
 }

@@ -27,7 +27,7 @@
 #include "AliDecayer.h"
 #include "AliDecayerEvtGen.h"
 #include "TDatabasePDG.h"
-#include "./HFUtils.C"
+#include "../HFUtils.C"
 #include "TMVA/Reader.h"
 #include "Math/Vector3D.h"
 #include "Math/Vector4D.h"
@@ -127,7 +127,7 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
   det->SetMaxChi2NDF(3.5); // max total chi2/ndf
   det->SetMaxChi2Vtx(-20);  // fiducial cut on chi2 of convergence to vtx  
   // IMPORTANT FOR NON-UNIFORM FIEL
-  det->SetDefStepAir(1);
+  //det->SetDefStepAir(1);
   det->SetMinP2Propagate(0); //NA60+
   //det->SetMinP2Propagate(2); //NA60
   //
@@ -205,6 +205,7 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
   //TH2F *hTOF = new TH2F("hTOF", ";#it{p}(GeV/#it{c});TOF #beta;counts", 200, 0, 8, 300, 0.8, 1.15);
   TH2F* hptdau[3];
   TH1D* hydau[3];
+  TH1D* hpdau[3];
   TH2F* hResPxDauVsPt[3];
   TH2F* hResPyDauVsPt[3];
   TH2F* hResPzDauVsPt[3];
@@ -218,6 +219,7 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
   for(int i = 0; i < nbody; i++){
     hptdau[i] = new TH2F(Form("hptdau%i",i), " ;#it{p}_{T} (GeV/#it{c});#it{p}_{TM} (GeV/#it{c});counts", 50,ptminSG, 3,50,ptminSG, 3.0);
     hydau[i]  = new TH1D(Form("hydau%i",i), ";y_{};counts", 160, yminSG, ymaxSG);
+    hpdau[i]  = new TH1D(Form("hpdau%i",i), ";y_{};counts", 40, 0, 20);
     hResPxDauVsPt[i] = new TH2F(Form("hResPxDauVsPt%i",i), ";#it{p}_{xgen}-#it{p}_{xrec} (GeV/#it{c});#it{p}_{T} (GeV/#it{c});counts", 100, -0.01, 0.01, Nbin, ptminSG, 3.0);
     hResPyDauVsPt[i] = new TH2F(Form("hResPyDauVsPt%i",i), ";#it{p}_{ygen}-#it{p}_{yrec} (GeV/#it{c});#it{p}_{T} (GeV/#it{c});counts", 100, -0.01, 0.01, Nbin, ptminSG, 3.0);
     hResPzDauVsPt[i] = new TH2F(Form("hResPzDauVsPt%i",i), ";#it{p}_{zgen}-#it{p}_{zrec} (GeV/#it{c});#it{p}_{T} (GeV/#it{c});counts", 100, -1, 1, Nbin, ptminSG, 3.0);
@@ -428,21 +430,25 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
         Int_t crg = (iparticle->GetPdgCode() > 0) ? 1 : -1;
         Double_t ptdau = iparticle->Pt();
         Double_t ydau = iparticle->Y();
+        Double_t pdau = iparticle->P();
         Int_t crg_index = (crg == 1) ? 0 : 1;
         if(nbody == 2)
         {
           daurecswapmass[crg_index].SetXYZM(iparticle->Px(), iparticle->Py(), iparticle->Pz(), (iparticle->GetMass() == massDau[1])? massDau[0] : massDau[1]);
           hptdau[crg_index]->Fill(ptdau,ptGen);
           hydau[crg_index]->Fill(ydau);
+          hpdau[crg_index]->Fill(pdau);
         }
         else{
           if((pdg_dau[0] == kf || pdg_dau[1] == kf) && nrec==0){
             hptdau[crg_index]->Fill(ptdau,ptGen);
             hydau[crg_index]->Fill(ydau);
+            hpdau[crg_index]->Fill(pdau);
           }
           else{
             hptdau[(kf == pdg_dau2[0]) ? 1 : 2]->Fill(ptdau,ptGen);
             hydau[(kf == pdg_dau2[0]) ? 1 : 2]->Fill(ydau);
+            hpdau[(kf == pdg_dau2[0]) ? 1 : 2]->Fill(pdau);
           }
         }
 
@@ -969,21 +975,27 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
   if(nbody == 2){
     hptdau[0]->SetName("hptdauPos");
     hydau[0]->SetName("hydauPos");
+    hpdau[0]->SetName("hpdauPos");
     hptdau[1]->SetName("hptdauNeg");
     hydau[1]->SetName("hydauNeg");
+    hpdau[1]->SetName("hpdauNeg");
     hydau2D->Write();
   }
   else{
     hptdau[0]->SetName(Form("hptdau_%i",(pdg_dau[0] == pdg_unstable_dau) ? pdg_dau[1] : pdg_dau[0]));
     hydau[0]->SetName(Form("hydau_%i",(pdg_dau[0] == pdg_unstable_dau) ? pdg_dau[1] : pdg_dau[0]));
+    hpdau[0]->SetName(Form("hpdau_%i",(pdg_dau[0] == pdg_unstable_dau) ? pdg_dau[1] : pdg_dau[0]));
     hptdau[1]->SetName(Form("hptdau2_%i",pdg_dau2[0]));
     hydau[1]->SetName(Form("hydau2_%i",pdg_dau2[0]));
+    hpdau[1]->SetName(Form("hpdau2_%i",pdg_dau2[0]));
     hptdau[2]->SetName(Form("hptdau2%i",pdg_dau2[1]));
     hydau[2]->SetName(Form("hydau2_%i",pdg_dau2[1]));
+    hpdau[2]->SetName(Form("hpdau2_%i",pdg_dau2[1]));
   }
   for(int i = 0; i < nbody; i++){
     hptdau[i]->Write();
     hydau[i]->Write();
+    hpdau[i]->Write();
   }
   fout2.Close();
   fout->Close();
