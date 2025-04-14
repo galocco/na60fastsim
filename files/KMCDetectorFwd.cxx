@@ -47,7 +47,7 @@ KMCDetectorFwd::KMCDetectorFwd(const char *name, const char *title)
   ,fMinITSHits(0)
   ,fMinMSHits(0)
   ,fMinTRHits(0)
-  ,fMinP2Propagate(1.)
+  ,fMinP2Propagate(0.01)
   ,fMaxChi2ClSQ(0)
   ,fMaxSeedToPropagate(0)
    //
@@ -612,7 +612,11 @@ KMCLayerFwd* KMCDetectorFwd::AddPixelPlaneLayer(const char *name, Float_t zPos, 
   }
   float offsX = 0.3; // X offset of the 1st quadrant chip inner corner from 0,0
   float offsY =-0.3; // Y offset of the 1st quadrant chip inner corner from 0,0
+#ifdef _NOVTPLANEGAPS_
+  float interChipGap = 0.0;
+#else
   float interChipGap = 0.02;
+#endif
   KMCPixelPlane* lr = new KMCPixelPlane(name, zPos, thickness, air->GetRadLength(), air->GetDensity(), air, // substrate
 					radL, density, mat, // sensor
 					offsX, offsY,  interChipGap, // offset of the inner corner of the 1st quadrant chip
@@ -925,9 +929,12 @@ Int_t KMCDetectorFwd::PropagateToLayer(KMCProbeFwd* trc, KMCLayerFwd* lrFrom, KM
   if (lrFrom) {
     //
     if (!lrFrom->IsDead()) { // active layers are thin, no need for step by step tracking. The track is always in the middle
-      AliDebug(2,Form("Correcting for mat.in active layer: X/X0: %f X*rho:%f ", lrFrom->GetX2X0(), dir*lrFrom->GetXTimesRho()));
+      float x2x0=0,xrho=0;
+      lrFrom->getMatBudget(trc->GetX(),trc->GetY(), x2x0, xrho);
+      AliDebug(2,Form("Correcting for mat.in active layer: X/X0: %f X*rho:%f ", x2x0, xrho));
       // note: for thin layer we ignore difference between the real BB and ETP eloss params
-      if (!trc->CorrectForMeanMaterial(lrFrom->GetX2X0(), -dir*lrFrom->GetXTimesRho(), modeMC)) return 0; 
+      double corrELoss = lrFrom->GetELoss2ETP(trc->GetP(), trc->GetMass() );
+      if (!trc->CorrectForMeanMaterial(x2x0, -dir*xrho*corrELoss, modeMC)) return 0; 
     }
     else {
       //
