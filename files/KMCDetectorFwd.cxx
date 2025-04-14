@@ -679,6 +679,11 @@ KMCPolyLayer* KMCDetectorFwd::AddPolyLayer(const char* type, const char *name, F
     KMCPolyLayer *newLayer = new KMCPolyLayer(name);
     newLayer->SetZ(zPos);
     newLayer->SetThickness(thickness);
+    std::cout<<"AddPolyLayer "<<name<<"\n";
+    std::cout<<"thickness*density/radL: "<<thickness*density/radL<<std::endl;
+    std::cout<<"radL: "<<radL<<std::endl;
+    std::cout<<"thickness: "<<thickness<<std::endl;
+    std::cout<<"density: "<<density<<std::endl;
     newLayer->SetX2X0( radL>0 ? thickness*density/radL : 0);
     newLayer->SetXTimesRho(thickness*density);
     newLayer->SetXRes(999999);
@@ -704,6 +709,12 @@ void KMCDetectorFwd::AddBeamPipe(Float_t r, Float_t dr, Float_t radL, Float_t de
   fBeamPipe = new BeamPipe((char*)"BeamPipe");
   fBeamPipe->SetRadius(r);
   fBeamPipe->SetThickness(dr);
+
+  std::cout<<"AddBeamPipe\n";
+  std::cout<<"dr*density/radL: "<<dr*density/radL<<std::endl;
+  std::cout<<"radL: "<<radL<<std::endl;
+  std::cout<<"dr: "<<dr<<std::endl;
+  std::cout<<"density: "<<density<<std::endl;
   fBeamPipe->SetX2X0( radL>0 ? dr*density/radL : 0);
   fBeamPipe->SetXTimesRho(dr*density);  
   fBeamPipe->SetDead(kTRUE);

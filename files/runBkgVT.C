@@ -7,8 +7,8 @@
 #include <TH1F.h>
 #include <TNtuple.h>
 #include <TFile.h>
-#include "KMCDetectorFwd.h"
-#include "KMCProbeFwd.h"
+#include "../KMCDetectorFwd.h"
+#include "../KMCProbeFwd.h"
 #include "TLorentzVector.h"
 #include "TGenPhaseSpace.h"
 #include "TRandom.h"
@@ -34,11 +34,13 @@ TDatime dt;
 
 void runBkgVT(Int_t nevents = 100, 
 	      double Eint = 40.,
-            const char *setup = "/home/giacomo/na60fastsim/files/setups/setup-proposal.txt",
+	      //const char *setup = "/home/giacomo/na60fastsim/files/setups/setup-proposal-no-pb.txt",
+	      const char *setup = "/home/giacomo/na60fastsim/files/setups/setup-proposal.txt",
+            //const char *setup = "/home/giacomo/na60fastsim/files/setups/setup-EHN1_40GeV_5pixel.txt",
 	      int minITShits=4,
 	      double chi2Cut = 1.5,
-	      bool simulateBg=kTRUE,
-	      bool optLastLayClean=kFALSE)
+	      bool simulateBg=kFALSE,
+            TString suffix = "_Pb")
 {
 
   int refreshBg = 100;
@@ -51,9 +53,6 @@ void runBkgVT(Int_t nevents = 100,
   TH3F *h3DKBkg = new TH3F("h3DKBkg", "pt,y,phi pions", 50, 0., 5., 50, 0., 5., 50, 0, 2 * TMath::Pi());
   TH3F *h3DPBkg = new TH3F("h3DPBkg", "pt,y,phi pions", 50, 0., 5., 50, 0., 5., 50, 0, 2 * TMath::Pi());
   TH2F* hResidPVsP = new TH2F("hResidPVsP","",100,0.,10.,100,-0.5,0.5);
-  TH2F* hResidPVsPFake = new TH2F("hResidPVsPFake","",100,0.,10.,100,-0.5,0.5);
-  TH2F* hResidPVsPGood = new TH2F("hResidPVsPGood","",100,0.,10.,100,-0.5,0.5);
-  TH2F* hResidPVsEta = new TH2F("hResidPVsEta","",40,1.,5.,100,-0.5,0.5);
   TH2F* hResidPtVsPt = new TH2F("hResidPtVsPt","",100,0.,10.,100,-0.5,0.5);
   TH2F* hResidPzVsPt = new TH2F("hResidPzVsPt","",100,0.,10.,100,-0.5,0.5);
   TH2F* hResidPzVsPz = new TH2F("hResidPzVsPz","",100,0.,10.,100,-0.5,0.5);
@@ -88,8 +87,6 @@ void runBkgVT(Int_t nevents = 100,
   det->InitBkg(Eint);
   
   det->ForceLastActiveLayer(det->GetLastActiveLayerITS()); // will not propagate beyond VT
-  if(optLastLayClean) det->setLastITSLayerClean(true);
-
   det->SetMinITSHits(TMath::Min(minITShits,det->GetNumberOfActiveLayersITS())); //NA60+
   // we don't need MS part here, even if it is in the setup
   //det->SetMinITSHits(det->GetNumberOfActiveLayersITS()-1); //NA60
@@ -100,14 +97,13 @@ void runBkgVT(Int_t nevents = 100,
   // max number of seeds on each layer to propagate (per muon track)
   det->SetMaxSeedToPropagate(3000);
   //
-  // set chi2 cuts
   det->SetMaxChi2Cl(10.);  // max track to cluster chi2
   det->SetMaxChi2NDF(3.5); // max total chi2/ndf
-  det->SetMaxChi2Vtx(-20);  // fiducial cut on chi2 of convergence to vtx
+  det->SetMaxChi2Vtx(-20);  // fiducial cut on chi2 of convergence to vtx  
   
   // IMPORTANT FOR NON-UNIFORM FIELDS
-  det->SetDefStepAir(1);
-  det->SetMinP2Propagate(0.01); //NA60+
+  det->SetDefStepAir(0.1);
+  det->SetMinP2Propagate(0); //NA60+
   //det->SetMinP2Propagate(2); //NA60
   //
   det->SetIncludeVertex(kFALSE); // count vertex as an extra measured point
@@ -148,7 +144,7 @@ void runBkgVT(Int_t nevents = 100,
 
 
 
-  TFile *f = new TFile("treeBkgEvents.root", "RECREATE");
+  TFile *f = new TFile(Form("treeBkgEvents%s.root",suffix.Data()), "RECREATE");
   TTree *tree = new TTree("tree", "tree Bkg");
   TClonesArray *arrtr = new TClonesArray("KMCProbeFwd");
   TClonesArray &aarrtr = *arrtr;
@@ -180,7 +176,6 @@ void runBkgVT(Int_t nevents = 100,
       double ptotgen=TMath::Sqrt(pxyz[0]*pxyz[0]+pxyz[1]*pxyz[1]+pxyz[2]*pxyz[2]);
       double ptgen=pt;
       double pzgen=pxyz[2];
-      double etagen=0.5*TMath::Log((ptotgen+pzgen)/(ptotgen-pzgen));
       hGenStat->Fill(1);
 
       TLorentzVector *ppi = new TLorentzVector(0., 0., 0., 0.);
@@ -207,9 +202,6 @@ void runBkgVT(Int_t nevents = 100,
       double ptrec=TMath::Sqrt(pxyz[0]*pxyz[0]+pxyz[1]*pxyz[1]);
       double pzrec=pxyz[2];
       hResidPVsP->Fill(ptotgen,ptotrec-ptotgen);
-      hResidPVsEta->Fill(etagen,ptotrec-ptotgen);
-      if(trw->GetNFakeITSHits()>0) hResidPVsPFake->Fill(ptotgen,ptotrec-ptotgen);
-      else hResidPVsPGood->Fill(ptotgen,ptotrec-ptotgen);
       hResidPtVsPt->Fill(ptgen,ptrec-ptgen);
       hResidPzVsPt->Fill(ptgen,pzrec-pzgen);
       hResidPzVsPz->Fill(pzgen,pzrec-pzgen);
@@ -232,7 +224,6 @@ void runBkgVT(Int_t nevents = 100,
       double ptotgen=TMath::Sqrt(pxyz[0]*pxyz[0]+pxyz[1]*pxyz[1]+pxyz[2]*pxyz[2]);
       double ptgen=pt;
       double pzgen=pxyz[2];
-      double etagen=0.5*TMath::Log((ptotgen+pzgen)/(ptotgen-pzgen));
      
       TLorentzVector *pk = new TLorentzVector(0., 0., 0., 0.);
       pk->SetXYZM(pxyz[0], pxyz[1], pxyz[2], mass);
@@ -258,9 +249,6 @@ void runBkgVT(Int_t nevents = 100,
       double ptrec=TMath::Sqrt(pxyz[0]*pxyz[0]+pxyz[1]*pxyz[1]);
       double pzrec=pxyz[2];
       hResidPVsP->Fill(ptotgen,ptotrec-ptotgen);
-      hResidPVsEta->Fill(etagen,ptotrec-ptotgen);
-      if(trw2->GetNFakeITSHits()>0) hResidPVsPFake->Fill(ptotgen,ptotrec-ptotgen);
-      else hResidPVsPGood->Fill(ptotgen,ptotrec-ptotgen);
       hResidPtVsPt->Fill(ptgen,ptrec-ptgen);
       hResidPzVsPt->Fill(ptgen,pzrec-pzgen);
       hResidPzVsPz->Fill(pzgen,pzrec-pzgen);
@@ -282,7 +270,6 @@ void runBkgVT(Int_t nevents = 100,
       double ptotgen=TMath::Sqrt(pxyz[0]*pxyz[0]+pxyz[1]*pxyz[1]+pxyz[2]*pxyz[2]);
       double ptgen=pt;
       double pzgen=pxyz[2];
-      double etagen=0.5*TMath::Log((ptotgen+pzgen)/(ptotgen-pzgen));
      
       TLorentzVector *pp = new TLorentzVector(0., 0., 0., 0.);
       pp->SetXYZM(pxyz[0], pxyz[1], pxyz[2], mass);
@@ -308,9 +295,6 @@ void runBkgVT(Int_t nevents = 100,
       double ptrec=TMath::Sqrt(pxyz[0]*pxyz[0]+pxyz[1]*pxyz[1]);
       double pzrec=pxyz[2];
       hResidPVsP->Fill(ptotgen,ptotrec-ptotgen);
-      hResidPVsEta->Fill(etagen,ptotrec-ptotgen);
-      if(trw3->GetNFakeITSHits()>0) hResidPVsPFake->Fill(ptotgen,ptotrec-ptotgen);
-      else hResidPVsPGood->Fill(ptotgen,ptotrec-ptotgen);
       hResidPtVsPt->Fill(ptgen,ptrec-ptgen);
       hResidPzVsPt->Fill(ptgen,pzrec-pzgen);
       hResidPzVsPz->Fill(pzgen,pzrec-pzgen);
@@ -323,7 +307,7 @@ void runBkgVT(Int_t nevents = 100,
   tree->Write();
   f->Close();
   
-  TFile *outfile = new TFile("bkgdistributions.root", "recreate");
+  TFile *outfile = new TFile(Form("bkgdistributions%s.root",suffix.Data()), "recreate");
   outfile->cd();
   hNevents->Write();
   hGenStat->Write();
@@ -331,9 +315,6 @@ void runBkgVT(Int_t nevents = 100,
   h3DKBkg->Write();
   h3DPBkg->Write();
   hResidPVsP->Write();
-  hResidPVsPGood->Write();
-  hResidPVsPFake->Write();
-  hResidPVsEta->Write();
   hResidPtVsPt->Write();
   hResidPzVsPt->Write();
   hResidPzVsPz->Write();

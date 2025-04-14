@@ -2,6 +2,7 @@
 #include "KMCLayerFwd.h"
 #include <TGeoGlobalMagField.h>
 #include <TRandom.h>
+#include "iostream"
 
 ClassImp(KMCProbeFwd)
 
@@ -12,6 +13,11 @@ Double_t KMCProbeFwd::fgMissingHitPenalty = 2.;
 KMCProbeFwd::KMCProbeFwd() 
   :fWeight(1) 
   ,fMass(0.10566)
+  ,fPdg(0)
+  ,fPdgMother(0)
+  ,fIndex(0)
+  ,fIndexMom(0)
+  ,fIsFromPrim(true)
   ,fChi2(0)
   ,fChi2ITS(0)
   ,fMSX2X0Seen(0)
@@ -31,6 +37,11 @@ KMCProbeFwd::KMCProbeFwd()
 KMCProbeFwd::KMCProbeFwd(double *xyz, double *pxyz, Int_t sign, double errLoose) 
   :fWeight(1) 
   ,fMass(0.10566)
+  ,fPdg(0)
+  ,fPdgMother(0)
+  ,fIndex(0)
+  ,fIndexMom(0)
+  ,fIsFromPrim(true)
   ,fChi2(0)
   ,fChi2ITS(0)
   ,fMSX2X0Seen(0)
@@ -61,6 +72,11 @@ KMCProbeFwd::KMCProbeFwd(const KMCProbeFwd& src)
 :  TObject(src)
   ,fWeight(src.fWeight)
   ,fMass(src.fMass)
+  ,fPdg(src.fPdg)
+  ,fPdgMother(src.fPdgMother)
+  ,fIndex(src.fIndex)
+  ,fIndexMom(src.fIndexMom)
+  ,fIsFromPrim(src.fIsFromPrim)
   ,fChi2(src.fChi2)
   ,fChi2ITS(src.fChi2ITS)
   ,fMSX2X0Seen(src.fMSX2X0Seen)
@@ -88,6 +104,11 @@ KMCProbeFwd& KMCProbeFwd::operator=(const KMCProbeFwd& src)
   this->TObject::operator=(src);
   fWeight = src.fWeight;
   fMass = src.fMass;
+  fPdg = src.fPdg;
+  fPdgMother = src.fPdgMother;
+  fIndex = src.fIndex;
+  fIndexMom = src.fIndexMom;
+  fIsFromPrim = src.fIsFromPrim;
   fChi2 = src.fChi2;
   fChi2ITS = src.fChi2ITS;
   fMSX2X0Seen = src.fMSX2X0Seen;
@@ -117,6 +138,11 @@ void KMCProbeFwd::Reset()
   fChi2ITS=0;
   fMSX2X0Seen = 0;
   fHits=fFakes=0;  
+  fPdg=0; 
+  fPdgMother=0; 
+  fIndex=0; 
+  fIndexMom=0; 
+  fIsFromPrim=true; 
   fTrack.Reset();
   ResetCovariance();
   for (int i=kMaxITSLr;i--;) {
@@ -136,7 +162,8 @@ Bool_t KMCProbeFwd::Init(const double *xyz, const double *pxyz, Int_t sign, doub
   //printf("SetLab %f %f %f\n",pxyz[0],pxyz[1],pxyz[2]);
   Lab2Trk(xyz,xyzL);
   Lab2Trk(pxyz,pxyzL);
-  double cov[21] = {1.e-6,    // assign small errors first
+  double cov[21] = {
+        1.e-6,    // assign small errors first
 		    0.   ,1.e-6, 
 		    0.   ,0.   ,1.e-6, 
 		    0.   ,0.   ,0.   ,1.e-4,
@@ -175,6 +202,7 @@ Bool_t KMCProbeFwd::PropagateToZBxByBz(double z, double maxDZ, Double_t xOverX0,
 {
   // propagate the track to position Z in uniform material with xOverX0 rad lgt and xTimesRho lgt*density
   //
+  
   double zCurr = GetZ();
   double dz = z - zCurr;
   if (TMath::Abs(dz)<kAlmost0) return kTRUE;
@@ -182,6 +210,7 @@ Bool_t KMCProbeFwd::PropagateToZBxByBz(double z, double maxDZ, Double_t xOverX0,
   double zstep = dz/nz;
   double xyz[3],bxyz[3],bxyzFwd[3];
   AliDebug(2,Form("from Z=%f to Z=%f, X/X0: %f X*rho:%f, max step:%f Mode:%d (%d steps)", GetZ(),z,xOverX0,xTimesRho,maxDZ,modeMC,nz));
+  //std::cout<<"from Z="<<GetZ()<<" to Z="<<z<<", X/X0: "<<xOverX0<<" X*rho:"<<xTimesRho<<", max step:"<<maxDZ<<" Mode:"<<modeMC<<" ("<<nz<<" steps)"<<std::endl;
   for (int iz=0;iz<nz;iz++) {
     GetXYZ(xyz);              // coordinates in Lab frame
     TGeoGlobalMagField::Instance()->Field(xyz,bxyz);

@@ -1,4 +1,5 @@
 #include "KMCPixelPlane.h"
+#include <iostream>
 
 #ifdef _NOVTPLANEGAPS_
 const float KMCPixelPlane::DeadXShort = 0;// 0.15;  // short end cap
@@ -35,6 +36,12 @@ KMCPixelPlane::KMCPixelPlane(const char *name, float zpos, float thickness,
 			     ) : KMCPolyLayer(name)
 {
   // subtrate settings
+
+  std::cout<<"KMCPixelPlane "<<name<<"\n";
+  std::cout<<"thickness*density/radL: "<<thickness*density/radL<<std::endl;
+  std::cout<<"radL: "<<radL<<std::endl;
+  std::cout<<"thickness: "<<thickness<<std::endl;
+  std::cout<<"density: "<<density<<std::endl;
   SetZ(zpos);
   SetThickness(thickness);
   SetX2X0( radL>0 ? thickness*density/radL : 0);
