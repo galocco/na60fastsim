@@ -42,14 +42,18 @@ double zTOF = 0.40;
 double vX = 0, vY = 0, vZ = 0; // event vertex
 TDatime dt;
 
+
+//GenerateSignalCandidates(10000, 40, "_K0S", "../setups/setup_proposal_40GeV.txt", "../decaytables/USERTABK0.DEC", 310)
+//GenerateSignalCandidates(10000, 40, "_LAMBDA", "../setups/setup_proposal_40GeV.txt", "../decaytables/USERTABLAMBDA.DEC", 3122)
+//GenerateSignalCandidates(10000, 40, "_ANTILAMBDA", "../setups/setup_proposal_40GeV.txt", "../decaytables/USERTABLAMBDA.DEC", -3122)
+//GenerateSignalCandidates(10000, 40, "_XI", "../setups/setup_proposal_40GeV.txt", "../decaytables/USERTABXI.DEC", 3312)
+//GenerateSignalCandidates(10000, 40, "_ANTIXI", "../setups/setup_proposal_40GeV.txt", "../decaytables/USERTABXI.DEC", -3312)
+//GenerateSignalCandidates(1000000, 40, "_OMEGA", "../setups/setup_proposal_40GeV.txt", "../decaytables/USERTABOMEGA.DEC", 3334)
+
 void GenerateSignalCandidates(Int_t nevents = 10000, 
                               double Eint = 40,     
-                              TString suffix = "_LAMBDA_new",
-                              //const char *setup = "../setups/old_setup.txt",
-                              //const char *setup = "../setups/nocooling.txt",
-                              //TString suffix = "_K0S_new04mm_5hit",
-                              const char *setup = "/home/giacomo/na60fastsim/files/setups/setup-proposal.txt",
-                              //const char *setup = "/home/giacomo/na60fastsim/files/setups/setup-EHN1_40GeV_5pixelPOLY.txt",
+                              TString suffix = "_LAMBDA",
+                              const char *setup = "../setups/setup_proposal_40GeV.txt",
                               const char *privateDecayTable = "../decaytables/USERTABLAMBDA.DEC",
                               Int_t pdgParticle = 3122,
                               bool simulateBg = kFALSE,
@@ -67,6 +71,7 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
   int refreshBg = 70;
   static UInt_t seed = dt.Get();
   gRandom->SetSeed(seed);
+  
   gSystem->Load("$ALICE_ROOT/lib/libEvtGen.so");
   gSystem->Load("$ALICE_ROOT/lib/libEvtGenExternal.so");
   gSystem->Load("$ALICE_ROOT/lib/libTEvtGen.so");
@@ -201,6 +206,10 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
   TH2F* hPtRecoVsGenAll = new TH2F("hPtRecoVsGenAll"," ; Generated #it{p}_{T} ; Reconstructed #it{p}_{T}",40, ptminSG, 3.0,40, ptminSG, 3.0);
   TH2F* hDiffPtRecoGenAll = new TH2F("hDiffPtRecoGenAll"," ; Generated #it{p}_{T} ; Reco #it{p}_{T} - Gen #it{p}_{T}",40, ptminSG, 3.0,100,-0.2,0.2);
   TH2F* hMassVsOpen = new TH2F("hMassVsOpen", "Mass vs opening angle", 40, mass*0.96, mass*1.04, 50, 0., TMath::Pi());
+  
+  TH1F* hRecX = new TH1F("hRecX","",500,-0.2,0.2);
+  TH1F* hRecY = new TH1F("hRecY","",500,-0.2,0.2);
+  TH1F* hRecXY = new TH1F("hRecXY","",5000,0,0.5);
   //TH1F *hnSigmaTOF = new TH1F("hnSigmaTOF", ";n#sigma_{#beta};counts", 100, -5., 5.);
   //TH2F *hTOF = new TH2F("hTOF", ";#it{p}(GeV/#it{c});TOF #beta;counts", 200, 0, 8, 300, 0.8, 1.15);
   TH2F* hptdau[3];
@@ -251,6 +260,7 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
   TH1D *hDistxy = new TH1D("hDistxy", "generated secondary vertex d_{xy};d_{xy} (cm);counts", 100, 0, 30);
   TH1D *hDistz = new TH1D("hDistz", "generated secondary vertex z;z (cm);counts", 400, 0, 200);
   TH1D *hDistTot = new TH1D("hDistTot", "generated secondary vertex distance;d (cm);counts", 400, 0, 200);
+
 
   TH1D *hDistxRec = new TH1D("hDistxRec", "reconstructed secondary vertex x;x (cm);counts", 400, -30, 30);
   TH1D *hDistyRec = new TH1D("hDistyRec", "reconstructed secondary vertex y;y (cm);counts", 400, -30, 30);
@@ -501,6 +511,12 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
           }
           continue;
         }
+
+        double xyz[3];
+        trw->GetXYZ(xyz);
+        hRecX->Fill(xyz[0]);
+        hRecY->Fill(xyz[1]);
+        hRecXY->Fill(TMath::Sqrt(xyz[0]*xyz[0]+xyz[1]*xyz[1]));
 
         trw->SetIndexMom(istrange);
         trw->SetIndex(icount);
@@ -943,6 +959,9 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
     hChi2True->Write();
     hChi2Fake->Write();
     hd0XYprod->Write();
+    hRecX->Write();
+    hRecY->Write();
+    hRecXY->Write();
     //hTOF->Write();
     //hnSigmaTOF->Write();
 
@@ -1011,12 +1030,14 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
 }
 
 
+// MakeCombinBkgCandidates3Body("treeBkgEvents.root","treeStrangeParticles_K0S.root", "_OMEGA", 3334, "../setups/setup_proposal_40GeV.txt", 0.003, kTRUE, kTRUE, kTRUE)
 
 void MakeCombinBkgCandidates3Body(const char* trackTreeFileBkg="treeBkgEvents_layer5.root",
             const char* trackTreeFileSig="treeBkgEvents_layer5.root",
             TString suffix = "_Omega",
             Int_t pdgMother = 3334,
-            const char *setup = "../setups/setup_EHN1-H8_short_10pixel_1.5T_BB.txt",
+            const char *setup = "../setups/setup_proposal_40GeV.txt",
+            Double_t maxImpPar = 0.01,
             Int_t fullsim = kFALSE,
 			      Int_t writeNtuple = kTRUE,
             Int_t writeSparse = kTRUE){
@@ -1196,6 +1217,11 @@ void MakeCombinBkgCandidates3Body(const char* trackTreeFileBkg="treeBkgEvents_la
         tr1 = (KMCProbeFwd *)arrBkg->At(itr);
       else
         tr1 = (KMCProbeFwd *)arrSig->At(itr-arrentrBkg);
+
+      double xyz[3];
+      tr1->GetXYZ(xyz);
+      if(TMath::Sqrt(xyz[0]*xyz[0]+xyz[1]*xyz[1]) < maxImpPar)
+        continue;
       Float_t ch1 = tr1->GetCharge();
       
       if (ch1 * chMother < 0 && IsNotOmega) continue;//TODO: cambiare se Eint = 158A GeV
@@ -1205,6 +1231,10 @@ void MakeCombinBkgCandidates3Body(const char* trackTreeFileBkg="treeBkgEvents_la
           tr2 = (KMCProbeFwd *)arrBkg->At(itr2);
         else
           tr2 = (KMCProbeFwd *)arrSig->At(itr2-arrentrBkg);
+
+        tr2->GetXYZ(xyz);
+        if(TMath::Sqrt(xyz[0]*xyz[0]+xyz[1]*xyz[1]) < maxImpPar)
+          continue;
         Float_t ch2 = tr2->GetCharge();
         // convention: charge signs are ordered as +-+ or -+-
         if (ch1 * ch2 > 0) continue;
@@ -1215,6 +1245,10 @@ void MakeCombinBkgCandidates3Body(const char* trackTreeFileBkg="treeBkgEvents_la
             tr3 = (KMCProbeFwd *)arrBkg->At(itr3);
           else
             tr3 = (KMCProbeFwd *)arrSig->At(itr3-arrentrBkg);
+
+          tr3->GetXYZ(xyz);
+          if(TMath::Sqrt(xyz[0]*xyz[0]+xyz[1]*xyz[1]) < maxImpPar)
+            continue;
           Float_t ch3 = tr3->GetCharge();
           // convention: charge signs are ordered as +-+ or -+-
           if (ch3 * ch2 > 0) continue;
@@ -1371,7 +1405,7 @@ void MakeCombinBkgCandidates3Body(const char* trackTreeFileBkg="treeBkgEvents_la
         } // loop on third track
       } // loop on second track
     }// loop on first track
-    //printf(" --> Event %d, tot candidates = %.0f  in peak = %.0f\n",iev,countCand,countCandInPeak);
+    printf(" --> Event %d, tot candidates = %.0f  in peak = %.0f\n",iev,countCand,countCandInPeak);
   }
   
   fout->cd();
@@ -1400,15 +1434,23 @@ void MakeCombinBkgCandidates3Body(const char* trackTreeFileBkg="treeBkgEvents_la
   std::cout<<"execution time: "<<timer.RealTime()<<"\n";
 }
 
+/*
+MakeCombinBkgCandidates2Body("treeBkgEvents.root","treeStrangeParticles_K0S.root", "_K0S", 310, "../setups/setup_proposal_40GeV.txt", 0.003, kTRUE, kTRUE, kTRUE,4)
+MakeCombinBkgCandidates2Body("treeBkgEvents.root","treeStrangeParticles_LAMBDA.root", "_LAMBDA", 3122, "../setups/setup_proposal_40GeV.txt", 0.003, kTRUE, kTRUE, kTRUE,4)
+MakeCombinBkgCandidates2Body("treeBkgEvents.root","treeStrangeParticles_ANTILAMBDA.root", "_ANTILAMBDA", 3122, "../setups/setup_proposal_40GeV.txt", 0.003, kTRUE, kTRUE, kTRUE,4)
+MakeCombinBkgCandidates2Body("treeBkgEvents.root","treeStrangeParticles_XI.root", "_XI", 3312, "../setups/setup_proposal_40GeV.txt", 0.003, kTRUE, kTRUE, kTRUE,4)
+MakeCombinBkgCandidates2Body("treeBkgEvents.root","treeStrangeParticles_ANTIXI.root", "_ANTIXI", 3312, "../setups/setup_proposal_40GeV.txt", 0.003, kTRUE, kTRUE, kTRUE,4)
+*/
 void MakeCombinBkgCandidates2Body(const char* trackTreeFileBkg="treeBkgEvents_layer5.root",
             const char* trackTreeFileSig="treeBkgEvents_layer5.root",
             TString suffix = "_PHI_test",
             int pdgMother = 333,
-            const char *setup = "../setups/setup-EHN1_BetheBloch.txt",
+            const char *setup = "../setups/setup_proposal_40GeV.txt",
+            Double_t maxImpPar = 0.003,
             Int_t fullsim = kFALSE,
 			      Int_t writeNtuple = kTRUE,
             Int_t writeSparse = kTRUE,
-            Int_t minITSHits = 5){
+            Int_t minITSHits = 4){
 
   // Read the TTree of tracks produced with runBkgVT.C
   // Store in THnSparse and (optionally) TNtuple
@@ -1438,8 +1480,8 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFileBkg="treeBkgEvents_la
 
   Double_t massM = TDatabasePDG::Instance()->GetParticle(pdgMother)->Mass();
   //define the invariant mass range where the candidates are saved
-  float mass_range_min = (pdgMother!=333) ? massM*0.98 : 0.98;
-  float mass_range_max = (pdgMother!=333) ? massM*1.02 : 1.1;
+  float mass_range_min = (pdgMother!=333) ? massM*0.95 : 0.98;
+  float mass_range_max = (pdgMother!=333) ? massM*1.05 : 1.1;
 
   KMCDetectorFwd *det = new KMCDetectorFwd();
   det->ReadSetup(setup, setup);
@@ -1560,6 +1602,11 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFileBkg="treeBkgEvents_la
         tr1 = (KMCProbeFwd *)arrBkg->At(itr);
       else
         tr1 = (KMCProbeFwd *)arrSig->At(itr-arrentrBkg);
+
+      double xyz[3];
+      tr1->GetXYZ(xyz);
+      if(TMath::Sqrt(xyz[0]*xyz[0]+xyz[1]*xyz[1]) < maxImpPar)
+        continue;
       //if(tr1->GetNITSHits() < minITSHits) continue;
       Float_t ch1 = tr1->GetCharge();
       for (Int_t itr2 = itr+1; itr2 < arrentrBkg+arrentrSig; ++itr2){ 
@@ -1568,6 +1615,9 @@ void MakeCombinBkgCandidates2Body(const char* trackTreeFileBkg="treeBkgEvents_la
         else
           tr2 = (KMCProbeFwd *)arrSig->At(itr2-arrentrBkg);
 
+        tr2->GetXYZ(xyz);
+        if(TMath::Sqrt(xyz[0]*xyz[0]+xyz[1]*xyz[1]) < maxImpPar)
+          continue;
         //if(tr2->GetNITSHits() < minITSHits) continue;
         Float_t ch2 = tr2->GetCharge();
         if (ch1 * ch2 > 0) continue;

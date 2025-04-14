@@ -7,8 +7,8 @@
 #include <TH1F.h>
 #include <TNtuple.h>
 #include <TFile.h>
-#include "KMCDetectorFwd.h"
-#include "KMCProbeFwd.h"
+#include "../KMCDetectorFwd.h"
+#include "../KMCProbeFwd.h"
 #include "TLorentzVector.h"
 #include "TGenPhaseSpace.h"
 #include "TRandom.h"
@@ -37,7 +37,7 @@ void runBkgVT(Int_t nevents = 100,
             const char *setup = "/home/giacomo/na60fastsim/files/setups/setup-proposal.txt",
 	      int minITShits=4,
 	      double chi2Cut = 1.5,
-	      bool simulateBg=kTRUE,
+	      bool simulateBg=kFALSE,
 	      bool optLastLayClean=kFALSE)
 {
 
@@ -57,6 +57,11 @@ void runBkgVT(Int_t nevents = 100,
   TH2F* hResidPtVsPt = new TH2F("hResidPtVsPt","",100,0.,10.,100,-0.5,0.5);
   TH2F* hResidPzVsPt = new TH2F("hResidPzVsPt","",100,0.,10.,100,-0.5,0.5);
   TH2F* hResidPzVsPz = new TH2F("hResidPzVsPz","",100,0.,10.,100,-0.5,0.5);
+
+  TH1F* hRecX = new TH1F("hRecX","",500,-0.2,0.2);
+  TH1F* hRecY = new TH1F("hRecY","",500,-0.2,0.2);
+  TH1F* hRecXY = new TH1F("hRecXY","",5000,0,0.5);
+
  
   TH1F *hNevents = new TH1F("hNevents", "", 1, 0, 1);
   TH1F* hGenStat = new TH1F("hGenStat","",18,0.5,18.5);
@@ -199,6 +204,8 @@ void runBkgVT(Int_t nevents = 100,
 	continue;
       }
       trw->GetPXYZ(pxyz);
+      double xyz[3];
+      trw->GetXYZ(xyz);
       //printf("charge = %d, %f \n", charge, trw->GetCharge());
       new (aarrtr[icount]) KMCProbeFwd(*trw);
       hGenStat->Fill(5);
@@ -213,6 +220,9 @@ void runBkgVT(Int_t nevents = 100,
       hResidPtVsPt->Fill(ptgen,ptrec-ptgen);
       hResidPzVsPt->Fill(ptgen,pzrec-pzgen);
       hResidPzVsPz->Fill(pzgen,pzrec-pzgen);
+      hRecX->Fill(xyz[0]);
+      hRecY->Fill(xyz[1]);
+      hRecXY->Fill(TMath::Sqrt(xyz[0]*xyz[0]+xyz[1]*xyz[1]));
       icount++;
     }
 
@@ -250,6 +260,8 @@ void runBkgVT(Int_t nevents = 100,
 	continue;
       }
       trw2->GetPXYZ(pxyz);
+      double xyz[3];
+      trw2->GetXYZ(xyz);
       //printf("charge = %d, %f \n", charge, trw2->GetCharge());
       new (aarrtr[icount]) KMCProbeFwd(*trw2);
       hGenStat->Fill(11);
@@ -264,6 +276,9 @@ void runBkgVT(Int_t nevents = 100,
       hResidPtVsPt->Fill(ptgen,ptrec-ptgen);
       hResidPzVsPt->Fill(ptgen,pzrec-pzgen);
       hResidPzVsPz->Fill(pzgen,pzrec-pzgen);
+      hRecX->Fill(xyz[0]);
+      hRecY->Fill(xyz[1]);
+      hRecXY->Fill(TMath::Sqrt(xyz[0]*xyz[0]+xyz[1]*xyz[1]));
       icount++;
     }
     
@@ -300,6 +315,8 @@ void runBkgVT(Int_t nevents = 100,
 	continue;
       }
       trw3->GetPXYZ(pxyz);
+      double xyz[3];
+      trw3->GetXYZ(xyz);
       //printf("charge = %d, %f \n", charge, trw3->GetCharge());
       new (aarrtr[icount]) KMCProbeFwd(*trw3);
       hGenStat->Fill(17);
@@ -314,6 +331,9 @@ void runBkgVT(Int_t nevents = 100,
       hResidPtVsPt->Fill(ptgen,ptrec-ptgen);
       hResidPzVsPt->Fill(ptgen,pzrec-pzgen);
       hResidPzVsPz->Fill(pzgen,pzrec-pzgen);
+      hRecX->Fill(xyz[0]);
+      hRecY->Fill(xyz[1]);
+      hRecXY->Fill(TMath::Sqrt(xyz[0]*xyz[0]+xyz[1]*xyz[1]));
       icount++;
     }
     printf("Pions+Kaons+Protons in array = %d out of %.0f \n",icount,ntrPi+ntrK+ntrP);
@@ -337,5 +357,8 @@ void runBkgVT(Int_t nevents = 100,
   hResidPtVsPt->Write();
   hResidPzVsPt->Write();
   hResidPzVsPz->Write();
+  hRecX->Write();
+  hRecY->Write();
+  hRecXY->Write();
   outfile->Close();
 }
