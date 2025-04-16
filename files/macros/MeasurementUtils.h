@@ -421,30 +421,24 @@ double betaTOF(double L, double dt){
   return L/(TMath::C()*dt*TMath::Power(10,-12));
 }
 
-
-int IsTrueCandidate(KMCProbeFwd* tr1, KMCProbeFwd* tr2, KMCProbeFwd* tr3, int pdgMother, int pdg_dau[], int mass_hyp){
-  Bool_t pdgMom = tr1->GetPdgMother() == pdgMother && tr2->GetPdgMother() == pdgMother && tr3->GetPdgMother() == pdgMother;
-  Bool_t index  = tr2->GetIndexMom() == tr1->GetIndexMom() && tr2->GetIndexMom() == tr3->GetIndexMom();
-
-  Bool_t pdgDau1 = (mass_hyp==0) ? tr1->GetPdg() == pdg_dau[0] : tr1->GetPdg() == pdg_dau[2];
-  Bool_t pdgDau2 = tr2->GetPdg() == pdg_dau[1];
-  Bool_t pdgDau3 = (mass_hyp==0) ? tr3->GetPdg() == pdg_dau[2] : tr3->GetPdg() == pdg_dau[0];
-  Bool_t pdgDau  = pdgDau1 && pdgDau2 && pdgDau3;
-
-  if(pdgMom && index && pdgDau)
-    return 1;
-  else
-    return 0;
+int IsTrueCandidate2Body(KMCProbeFwd tr[], int pdgMother, TLorentzVector daurec[]){
+  for(int i=0; i<2; i++){
+    if (TMath::Abs(tr[i].GetPdgMother()) != TMath::Abs(pdgMother)) return 0;
+    if (TMath::Abs(tr[i].GetMass() - daurec[i].M()) > 0.01) return 0;
+    if (i < 2)
+      if (tr[i].GetIndexMom() != tr[i+1].GetIndexMom()) return 0;
+  }
+  return 1;
 }
 
-int IsTrueCandidate(KMCProbeFwd tr[], int pdgMother, TLorentzVector daurec[], int nbody, int mass_hyp = 0){
-  if(nbody==3)
-    if(tr[2*(1-mass_hyp)].GetIndex() > tr[2*mass_hyp].GetIndex()) return 0;
+int IsTrueCandidate3Body(KMCProbeFwd tr[], int pdgMother, int pdgguess[]){
+  if (tr[2].GetPdg() != pdgguess[2]) return 0;
+  if (tr[1].GetPdg() != pdgguess[0]) return 0;
+  if (tr[0].GetPdg() != pdgguess[1]) return 0;
 
-  for(int i=0; i<nbody; i++){
+  for(int i=0; i<3; i++){
     if (TMath::Abs(tr[i].GetPdgMother()) != TMath::Abs(pdgMother)) return 0;
-    if (TMath::Abs(tr[i].GetMass() - daurec[i].M()) > 0.00001) return 0;
-    if (i < nbody - 1)
+    if (i < 2)
       if (tr[i].GetIndexMom() != tr[i+1].GetIndexMom()) return 0;
   }
   return 1;
