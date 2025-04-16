@@ -421,12 +421,10 @@ double betaTOF(double L, double dt){
   return L/(TMath::C()*dt*TMath::Power(10,-12));
 }
 
-int IsTrueCandidate2Body(KMCProbeFwd tr[], int pdgMother, TLorentzVector daurec[]){
+int IsTrueCandidate2Body(KMCProbeFwd tr[], int pdgMother){
+  if (tr[0].GetIndexMom() != tr[1].GetIndexMom()) return 0;
   for(int i=0; i<2; i++){
     if (TMath::Abs(tr[i].GetPdgMother()) != TMath::Abs(pdgMother)) return 0;
-    if (TMath::Abs(tr[i].GetMass() - daurec[i].M()) > 0.01) return 0;
-    if (i < 2)
-      if (tr[i].GetIndexMom() != tr[i+1].GetIndexMom()) return 0;
   }
   return 1;
 }

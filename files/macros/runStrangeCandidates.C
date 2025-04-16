@@ -324,9 +324,9 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
   TClonesArray &aarrtr = *arrtr;
   tree->Branch("tracks", &arrtr);
 
-  TFile *fnt = 0x0;
-  TNtuple *ntcand = 0x0;
-  TNtuple *ntgen = 0x0;
+  TFile *fnt = nullptr;
+  TNtuple *ntcand = nullptr;
+  TNtuple *ntgen = nullptr;
   if (writeNtuple)
   {
     fnt = new TFile(Form("fntSig%s.root", suffix.Data()), "recreate");
@@ -336,7 +336,7 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
       ntgen = new TNtuple("ntgen", "ntgen", "pt:rapidity", 32000);
     }
     if (nbody == 2)
-      ntcand = new TNtuple("ntcand", "ntcand", "m:pt:rapidity:dist:cosp:d0prod:ptMin:ptMax:dca:thetad:arm:qt:impp:impn", 32000);
+      ntcand = new TNtuple("ntcand", "ntcand", "m:pt:rapidity:dist:cosp:d0prod:dca:arm:qt:ptMin:ptMax:thetad:impp:impn", 32000);
     else
       ntcand = new TNtuple("ntcand", "ntcand", "m:pt:rapidity:dist:distD:cosp:cospD:bxy:bxyD:dca:dcaD:arm:armD:qt:qtD:mD:imp0:imp1:imp2", 64000);
   }
@@ -460,11 +460,12 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
       if (IsStable)
         if (IsDecayDaughter && IsStable)
         {
-          Int_t crg = (iparticle->GetPdgCode() > 0) ? 1 : -1;
+          Int_t crg = TDatabasePDG::Instance()->GetParticle(iparticle->GetPdgCode())->Charge()/3.;
+
           Double_t ptdau = iparticle->Pt();
           Double_t ydau = iparticle->Y();
           Double_t pdau = iparticle->P();
-          Int_t crg_index = (crg == 1) ? 0 : 1;
+          Int_t crg_index = (crg > 0) ? 0 : 1;
           if (nbody == 2)
           {
             daurecswapmass[crg_index].SetXYZM(iparticle->Px(), iparticle->Py(), iparticle->Pz(), (iparticle->GetMass() == massDau[1]) ? massDau[0] : massDau[1]);
@@ -829,18 +830,19 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
     {
       if (nbody == 2)
       {
+        //m:pt:rapidity:dist:cosp:d0prod:dca:arm:qt:ptMin:ptMax:thetad:impp:impn
         arrnt[0] = massRec;
         arrnt[1] = ptRec;
         arrnt[2] = yRec;
         arrnt[3] = dist;
         arrnt[4] = cosp;
         arrnt[5] = d0xy[0] * d0xy[1];
-        arrnt[6] = TMath::Min(recProbe[0].GetTrack()->Pt(), recProbe[1].GetTrack()->Pt());
-        arrnt[7] = TMath::Max(recProbe[0].GetTrack()->Pt(), recProbe[1].GetTrack()->Pt());
-        arrnt[8] = dca;
-        arrnt[9] = TMath::ACos(thetad);
-        arrnt[10] = arm;
-        arrnt[11] = qT;
+        arrnt[6] = dca;
+        arrnt[7] = arm;
+        arrnt[8] = qT;
+        arrnt[9] = TMath::Min(recProbe[0].GetTrack()->Pt(), recProbe[1].GetTrack()->Pt());
+        arrnt[10] = TMath::Max(recProbe[0].GetTrack()->Pt(), recProbe[1].GetTrack()->Pt());
+        arrnt[11] = TMath::ACos(thetad);
         arrnt[12] = imp[0];
         arrnt[13] = imp[1];
       }
@@ -1060,6 +1062,10 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
   std::cout << "tot rejected: " << count_solve + count_mcwin + count_chi2 << std::endl;
   std::cout << "execution time: " << timer.RealTime() << "\n";
 
+  delete fnt;
+  delete ntcand;
+  delete ntgen;
+
 }
 
 // MakeCombinBkgCandidates3Body("treeStrangeParticles_OMEGA.root","treeStrangeParticles_OMEGA.root", "_OMEGA", 3334, "../setups/setup_proposal_40GeV.txt", 0.00, kTRUE, kTRUE, kTRUE)
@@ -1183,9 +1189,9 @@ void MakeCombinBkgCandidates3Body(const char *trackTreeFileBkg = "treeBkgEvents_
   std::cout << "massDau1: " << massDau[1] << "\n";
   std::cout << "massDau2: " << massDau[2] << "\n";
 
-  TFile *fnt = 0x0;
-  TFile *fhsp = 0x0;
-  TNtuple *ntcand = 0x0;
+  TFile *fnt = nullptr;
+  TFile *fhsp = nullptr;
+  TNtuple *ntcand = nullptr;
   const Int_t nAxes = 15;
   Double_t arrhsp[nAxes];
   Float_t arrnt[nAxes + 5];
@@ -1195,7 +1201,7 @@ void MakeCombinBkgCandidates3Body(const char *trackTreeFileBkg = "treeBkgEvents_
     ntcand = new TNtuple("ntcand", "ntcand", "m:pt:rapidity:dist:distD:cosp:cospD:bxy:bxyD:dca:dcaD:mD:arm:armD:qt:qtD:imp0:imp1:imp2:true", 32000);
   }
 
-  THnSparse *hsp = 0x0;
+  THnSparse *hsp = nullptr;
   if (writeSparse)
   {
     fhsp = new TFile(Form("fhspBkg%s.root", suffix.Data()), "recreate");
@@ -1533,7 +1539,7 @@ void MakeCombinBkgCandidates3Body(const char *trackTreeFileBkg = "treeBkgEvents_
 
 /*
 MakeCombinBkgCandidates2Body("treeBkgEvents.root","treeStrangeParticles_K0S.root", "_K0S", 310, "../setups/setup_proposal_40GeV.txt", 0.003, kTRUE, kTRUE, kTRUE,4)
-MakeCombinBkgCandidates2Body("treeBkgEvents.root","treeStrangeParticles_LAMBDA.root", "_LAMBDA", 3122, "../setups/setup_proposal_40GeV.txt", 0.003, kTRUE, kTRUE, kTRUE,4)
+MakeCombinBkgCandidates2Body("treeStrangeParticles_LAMBDA.root","treeStrangeParticles_LAMBDA.root", "_LAMBDA", 3122, "../setups/setup_proposal_40GeV.txt", 0.00, kFALSE, kTRUE, kTRUE,4)
 MakeCombinBkgCandidates2Body("treeBkgEvents.root","treeStrangeParticles_ANTILAMBDA.root", "_ANTILAMBDA", -3122, "../setups/setup_proposal_40GeV.txt", 0.003, kTRUE, kTRUE, kTRUE,4)
 MakeCombinBkgCandidates2Body("treeBkgEvents.root","treeStrangeParticles_XI.root", "_XI", 3312, "../setups/setup_proposal_40GeV.txt", 0.003, kTRUE, kTRUE, kTRUE,4)
 MakeCombinBkgCandidates2Body("treeBkgEvents.root","treeStrangeParticles_ANTIXI.root", "_ANTIXI", 3312, "../setups/setup_proposal_40GeV.txt", 0.003, kTRUE, kTRUE, kTRUE,4)
@@ -1635,22 +1641,19 @@ void MakeCombinBkgCandidates2Body(const char *trackTreeFileBkg = "treeBkgEvents_
 
   TH2F *hArmPod = new TH2F("hArmPod", ";#alpha;#it{p}_{T} (GeV/#it{c});counts", 1000, -1, 1, 1000, 0, 2);
 
-  TFile *fnt = 0x0;
-  TFile *fhsp = 0x0;
-  TNtuple *ntcand = 0x0;
+  TFile *fnt = nullptr;
+  TFile *fhsp = nullptr;
+  TNtuple *ntcand = nullptr;
   Double_t arrhsp[8];
-  Float_t arrnt[IsPhi ? 15 : 12];
+  Float_t arrnt[15];
 
   if (writeNtuple)
   {
     fnt = new TFile(Form("fntBkg%s.root", suffix.Data()), "recreate");
-    if (pdgMother != 333)
-      ntcand = new TNtuple("ntcand", "ntcand", "m:pt:rapidity:dist:cosp:d0prod:dca:arm:qt:impp:impn:true", 32000);
-    else
-      ntcand = new TNtuple("ntcand", "ntcand", "m:pt:rapidity:dist:cosp:d0prod:dca:arm:qt:ptMin:ptMax:thetad:true", 32000);
+    ntcand = new TNtuple("ntcand", "ntcand", "m:pt:rapidity:dist:cosp:d0prod:dca:arm:qt:ptMin:ptMax:thetad:impp:impn:true", 32000);
   }
 
-  THnSparse *hsp = 0x0;
+  THnSparse *hsp = nullptr;
   if (writeSparse)
   {
     fhsp = new TFile(Form("fhspBkg%s.root", suffix.Data()), "recreate");
@@ -1803,7 +1806,7 @@ void MakeCombinBkgCandidates2Body(const char *trackTreeFileBkg = "treeBkgEvents_
         if (d0x2 < 0)
           d0xy2 *= -1;
 
-        Int_t trueCand = IsTrueCandidate2Body(recProbe, pdgMother, daurec);
+        Int_t trueCand = IsTrueCandidate2Body(recProbe, pdgMother);
         hYPtReco->Fill(y, pt);
         hMass->Fill(invMass);
         hDCA->Fill(dca, pt);
@@ -1832,19 +1835,12 @@ void MakeCombinBkgCandidates2Body(const char *trackTreeFileBkg = "treeBkgEvents_
           arrnt[6] = dca;
           arrnt[7] = arm;
           arrnt[8] = qT;
-          arrnt[9] = (ch1 > 0) ? impParXY1 : impParXY2;
-          arrnt[10] = (ch1 < 0) ? impParXY1 : impParXY2;
-          if (IsPhi)
-          {
-            arrnt[11] = TMath::Min(recProbe[0].GetTrack()->Pt(), recProbe[1].GetTrack()->Pt());
-            arrnt[12] = TMath::Max(recProbe[0].GetTrack()->Pt(), recProbe[1].GetTrack()->Pt());
-            arrnt[13] = TMath::ACos(thetad);
-            arrnt[14] = trueCand;
-          }
-          else
-          {
-            arrnt[11] = trueCand;
-          }
+          arrnt[9] = TMath::Min(recProbe[0].GetTrack()->Pt(), recProbe[1].GetTrack()->Pt());
+          arrnt[10] = TMath::Max(recProbe[0].GetTrack()->Pt(), recProbe[1].GetTrack()->Pt());
+          arrnt[11] = TMath::ACos(thetad);
+          arrnt[12] = (ch1 > 0) ? impParXY1 : impParXY2;
+          arrnt[13] = (ch1 < 0) ? impParXY1 : impParXY2;
+          arrnt[14] = trueCand;
           ntcand->Fill(arrnt);
         }
 
