@@ -206,6 +206,8 @@ void runBkgVT(Int_t nevents = 100,
       trw->GetPXYZ(pxyz);
       double xyz[3];
       trw->GetXYZ(xyz);
+      if(TMath::Sqrt(xyz[0]*xyz[0]+xyz[1]*xyz[1])<0.01) continue;
+
       //printf("charge = %d, %f \n", charge, trw->GetCharge());
       new (aarrtr[icount]) KMCProbeFwd(*trw);
       hGenStat->Fill(5);
@@ -262,6 +264,7 @@ void runBkgVT(Int_t nevents = 100,
       trw2->GetPXYZ(pxyz);
       double xyz[3];
       trw2->GetXYZ(xyz);
+      if(TMath::Sqrt(xyz[0]*xyz[0]+xyz[1]*xyz[1])<0.01) continue;
       //printf("charge = %d, %f \n", charge, trw2->GetCharge());
       new (aarrtr[icount]) KMCProbeFwd(*trw2);
       hGenStat->Fill(11);
@@ -317,6 +320,8 @@ void runBkgVT(Int_t nevents = 100,
       trw3->GetPXYZ(pxyz);
       double xyz[3];
       trw3->GetXYZ(xyz);
+      if(TMath::Sqrt(xyz[0]*xyz[0]+xyz[1]*xyz[1])<0.01) continue;
+
       //printf("charge = %d, %f \n", charge, trw3->GetCharge());
       new (aarrtr[icount]) KMCProbeFwd(*trw3);
       hGenStat->Fill(17);
