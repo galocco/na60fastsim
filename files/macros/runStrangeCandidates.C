@@ -338,12 +338,12 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
     if (nbody == 2)
       ntcand = new TNtuple("ntcand", "ntcand", "m:pt:rapidity:dist:cosp:d0prod:ptMin:ptMax:dca:thetad:arm:qt:impp:impn", 32000);
     else
-      ntcand = new TNtuple("ntcand", "ntcand", "m:pt:rapidity:dist:distD:cosp:cospD:bxy:bxyD:dca:dcaD:arm:armD:qt:qtD:mD:imp0:imp1::imp2", 32000);
+      ntcand = new TNtuple("ntcand", "ntcand", "m:pt:rapidity:dist:distD:cosp:cospD:bxy:bxyD:dca:dcaD:arm:armD:qt:qtD:mD:imp0:imp1:imp2", 64000);
   }
 
   Float_t mD = 0;
-  Float_t *arrnt = new Float_t[(nbody == 2) ? 14 : 18];
-  Float_t arrntgen[4];
+  Float_t *arrnt = new Float_t[(nbody == 2) ? 14 : 19];
+  Float_t arrntgen[2];
   // read the pdg code of the daughters
   Int_t pdg_dau[2] = {0, 0};
   GetPDGDaughters(TMath::Abs(pdgParticle), pdg_dau, matter);
@@ -394,8 +394,7 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
   // for each event N particles are generated and decaded (only one decay channel) N = yield * Branching Ratio
   // the tracks of the reconstruced daughters are saved
   // the tracks saved in the tree are grouped by the event
-
-  Float_t imp[3];
+  
   while (SetEvent(nevents, iev, tree, aarrtr, T0, gen_part, multi_times_br, icount))
   {
     gen_part--;
@@ -431,6 +430,7 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
     istrange++;
     Double_t secvertgen[3] = {0, 0, 0};
     Double_t trdvertgen[3] = {0, 0, 0};
+    Float_t imp[3] = {0,0,0};
     // loop on decay products
     for (int i = 0; i < np; i++)
     {
@@ -554,16 +554,9 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
           pxyz[0] = iparticle->Px();
           pxyz[1] = iparticle->Py();
           pxyz[2] = iparticle->Pz();
+
           if (nbody == 2)
             imp[crg_index] = TMath::Sqrt(xyz[0] * xyz[0] + xyz[1] * xyz[1]);
-          else
-          {
-            if ((pdg_dau[0] == kf || pdg_dau[1] == kf) && nrec == 0)
-              imp[crg_index] = TMath::Sqrt(xyz[0] * xyz[0] + xyz[1] * xyz[1]);
-            else
-              imp[(kf == pdg_dau2[0]) ? 1 : 2] = TMath::Sqrt(xyz[0] * xyz[0] + xyz[1] * xyz[1]);
-          }
-
           // tHit = smearT(hasTOF(pxyz, iparticle->GetMass(), L, zTOF));
           // trw->SetTOF(tHit-T0);
           // trw->SetL(L);
@@ -593,8 +586,10 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
             }
             */
           }
-          else
+          else{
             recProbe[i - 2] = *trw;
+            imp[i - 2] = TMath::Sqrt(xyz[0] * xyz[0] + xyz[1] * xyz[1]);
+          }
 
           nrec++;
         }
@@ -868,8 +863,8 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
         arrnt[14] = qTD;
         arrnt[15] = mD;
         arrnt[16] = imp[0];
-        arrnt[17] = imp[1];
-        arrnt[18] = imp[2];
+        arrnt[17] = (recProbe[1].GetCharge() > 0) ? imp[1] : imp[2];
+        arrnt[18] = (recProbe[1].GetCharge() > 0) ? imp[2] : imp[1];
       }
       ntcand->Fill(arrnt);
     }
@@ -1058,11 +1053,13 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
   tracks_file->cd();
   tree->Write();
   tracks_file->Close();
+  fnt->Close();
   std::cout << "rejected solve:" << count_solve << std::endl;
   std::cout << "rejected mcwinner:" << count_mcwin << std::endl;
   std::cout << "rejected chi2:" << count_chi2 << std::endl;
   std::cout << "tot rejected: " << count_solve + count_mcwin + count_chi2 << std::endl;
   std::cout << "execution time: " << timer.RealTime() << "\n";
+
 }
 
 // MakeCombinBkgCandidates3Body("treeStrangeParticles_OMEGA.root","treeStrangeParticles_OMEGA.root", "_OMEGA", 3334, "../setups/setup_proposal_40GeV.txt", 0.00, kTRUE, kTRUE, kTRUE)
@@ -1469,9 +1466,9 @@ void MakeCombinBkgCandidates3Body(const char *trackTreeFileBkg = "treeBkgEvents_
               arrnt[13] = armD;
               arrnt[14] = qT;
               arrnt[15] = qTD;
-              arrnt[16] = impPar1;
-              arrnt[17] = impPar2;
-              arrnt[18] = impPar3;
+              arrnt[16] = impPar3;
+              arrnt[17] = (ch1 > 0) ? impPar1 : impPar2;
+              arrnt[18] = (ch1 > 0) ? impPar2 : impPar1;
               arrnt[19] = trueCand;
 
               ntcand->Fill(arrnt);
