@@ -45,7 +45,7 @@ TDatime dt;
 // GenerateSignalCandidates(1000000, 40, "_K0S", "../setups/setup_proposal_40GeV.txt", "../decaytables/USERTABK0.DEC", 310)
 // GenerateSignalCandidates(1000000, 40, "_LAMBDA", "../setups/setup_proposal_40GeV.txt", "../decaytables/USERTABLAMBDA.DEC", 3122)
 // GenerateSignalCandidates(1000000, 40, "_ANTILAMBDA", "../setups/setup_proposal_40GeV.txt", "../decaytables/USERTABLAMBDA.DEC", -3122)
-// GenerateSignalCandidates(1000000, 40, "_XI", "../setups/setup_proposal_40GeV.txt", "../decaytables/USERTABXI.DEC", 3312)
+// GenerateSignalCandidates(100000, 40, "_XI", "../setups/setup_proposal_40GeV.txt", "../decaytables/USERTABXI.DEC", 3312)
 // GenerateSignalCandidates(1000000, 40, "_ANTIXI", "../setups/setup_proposal_40GeV.txt", "../decaytables/USERTABXI.DEC", -3312)
 // GenerateSignalCandidates(1000000, 40, "_OMEGA", "../setups/setup_proposal_40GeV.txt", "../decaytables/USERTABOMEGA.DEC", 3334)
 
@@ -70,6 +70,8 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
   int nbody = GetNBody(TMath::Abs(pdgParticle), pdg_unstable_dau, matter);
   int refreshBg = 70;
   static UInt_t seed = dt.Get();
+
+  Int_t chMother = TDatabasePDG::Instance()->GetParticle(pdgParticle)->Charge(); //->Charge() gives the charge in units of |e|/3
   gRandom->SetSeed(seed);
 
   gSystem->Load("$ALICE_ROOT/lib/libEvtGen.so");
@@ -689,13 +691,20 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
       TVector3 plus(daurec[2].Px(), daurec[2].Py(), daurec[2].Pz());
       TVector3 minus(daurec[3].Px(), daurec[3].Py(), daurec[3].Pz());
       TVector3 mom(parent.Px(), parent.Py(), parent.Pz());
-      arm = ArmPod(plus, minus, mom, qT);
+      if(chMother < 0)
+        arm = ArmPod(plus, minus, mom, qT);
+      else
+        arm = ArmPod(minus, plus, mom, qT);
       hArmPod->Fill(arm, qT);
 
       TVector3 plusD(daurec[0].Px(), daurec[0].Py(), daurec[0].Pz());
       TVector3 minusD(daurec[1].Px(), daurec[1].Py(), daurec[1].Pz());
       TVector3 momD(parentD.Px(), parentD.Py(), parentD.Pz());
-      armD = ArmPod(plusD, minusD, momD, qTD);
+
+      if(chMother < 0)
+        armD = ArmPod(plusD, minusD, momD, qTD);
+      else
+        armD = ArmPod(minusD, plusD, momD, qTD);
       hArmPodD->Fill(armD, qTD);
     }
 
@@ -1068,8 +1077,8 @@ void GenerateSignalCandidates(Int_t nevents = 10000,
 
 }
 
-// MakeCombinBkgCandidates3Body("treeStrangeParticles_OMEGA.root","treeStrangeParticles_OMEGA.root", "_OMEGA", 3334, "../setups/setup_proposal_40GeV.txt", 0.00, kTRUE, kTRUE, kTRUE)
 // MakeCombinBkgCandidates3Body("treeStrangeParticles_OMEGA.root","treeStrangeParticles_OMEGA.root", "_OMEGA", 3334, "../setups/setup_proposal_40GeV.txt", 0.00, kFALSE, kTRUE, kTRUE)
+// MakeCombinBkgCandidates3Body("treeStrangeParticles_XI.root","treeStrangeParticles_XI.root", "_XI", 3312, "../setups/setup_proposal_40GeV.txt", 0.00, kFALSE, kTRUE, kTRUE)
 
 void MakeCombinBkgCandidates3Body(const char *trackTreeFileBkg = "treeBkgEvents_layer5.root",
                                   const char *trackTreeFileSig = "treeBkgEvents_layer5.root",
@@ -1312,10 +1321,10 @@ void MakeCombinBkgCandidates3Body(const char *trackTreeFileBkg = "treeBkgEvents_
           
           Float_t mass1 = massDau[pdgIndex1]; //
           Float_t mass0 = massDau[pdgIndex0]; //
-          
+          Int_t crg = TDatabasePDG::Instance()->GetParticle(pdgDaughter[1])->Charge();
           if (IsNotOmega) {
-            mass0 = massDau[(ch1*pdgDaughter[1] > 0) ? 1 : 2]; 
-            mass1 = massDau[(ch1*pdgDaughter[1] > 0) ? 2 : 1];
+            mass0 = massDau[(ch1*crg > 0) ? 1 : 2]; 
+            mass1 = massDau[(ch1*crg > 0) ? 2 : 1];
           }          
 
           daurec[0].SetXYZM(pxyz0[0], pxyz0[1], pxyz0[2], mass0);
@@ -1329,23 +1338,21 @@ void MakeCombinBkgCandidates3Body(const char *trackTreeFileBkg = "treeBkgEvents_
           TVector3 momD(parentD.Px(), parentD.Py(), parentD.Pz());
           Double_t massPair = parentD.M();
           // skip if the mass of the candidate unstable daughter is far from the expected mass
-          //if (massPair < massDau_range_min || massPair > massDau_range_max)
-          //  continue;
-          if (chMother < 0)
-            armD = ArmPod(oppSignD, sameSignD, momD, qTD);
-          else
+          if (massPair < massDau_range_min || massPair > massDau_range_max)
+            continue;
+          if(chMother < 0)
             armD = ArmPod(sameSignD, oppSignD, momD, qTD);
-
-          //if (IsNotOmega && pdgMother * armD < 0)
-          //  continue;
-          std::cout<<"Lambda mass: "<<massPair<<" nlambda: "<<lambda++<<std::endl;
+          else
+            armD = ArmPod(oppSignD, sameSignD, momD, qTD);
+          
+          if (IsNotOmega && chMother * armD > 0)
+            continue;
 
           pxyz[0] = parentD.Px();
           pxyz[1] = parentD.Py();
           pxyz[2] = parentD.Pz();
           KMCProbeFwd helper(VTrd, pxyz, recProbe[0].GetCharge() + recProbe[1].GetCharge());
           Float_t distPair = TMath::Sqrt(VTrd[0] * VTrd[0] + VTrd[1] * VTrd[1] + VTrd[2] * VTrd[2]);
-          Float_t distD = TMath::Sqrt((VSec[0] - VTrd[0]) * (VSec[0] - VTrd[0]) + (VSec[1] - VTrd[1]) * (VSec[1] - VTrd[1]) + (VSec[2] - VTrd[2]) * (VSec[2] - VTrd[2]));
 
           Float_t d1 = recProbe[1].GetX() - recProbe[0].GetX();
           Float_t d2 = recProbe[1].GetY() - recProbe[0].GetY();
@@ -1389,6 +1396,7 @@ void MakeCombinBkgCandidates3Body(const char *trackTreeFileBkg = "treeBkgEvents_
             countCand++;
             recProbe[2].PropagateToDCA(&helper);
             ComputeVertex(recProbe[2], helper, VSec[0], VSec[1], VSec[2]);
+            Float_t distD = TMath::Sqrt((VSec[0] - VTrd[0]) * (VSec[0] - VTrd[0]) + (VSec[1] - VTrd[1]) * (VSec[1] - VTrd[1]) + (VSec[2] - VTrd[2]) * (VSec[2] - VTrd[2]));
 
             recProbe[2].GetPXYZ(pxyz);
             daurec[2].SetXYZM(pxyz[0], pxyz[1], pxyz[2], massDau[0]);
@@ -1399,22 +1407,21 @@ void MakeCombinBkgCandidates3Body(const char *trackTreeFileBkg = "treeBkgEvents_
 
             Double_t cosp = CosPointingAngle(vprim, VSec, parent);
             // skip if the cosine of the pointing angle is too small
-            //if (cosp < 0.9999)
-            // continue;
+            if (cosp < 0.99)
+             continue;
             Float_t dist = TMath::Sqrt(VSec[0] * VSec[0] + VSec[1] * VSec[1] + VSec[2] * VSec[2]);
             // skip if the tertiary decay occurs before the secondary decay
-            //if (dist > distPair)
-            // continue;
 
             TVector3 sameSign(daurec[2].Px(), daurec[2].Py(), daurec[2].Pz());
             TVector3 neutral(daurec[3].Px(), daurec[3].Py(), daurec[3].Pz());
             TVector3 mom(parent.Px(), parent.Py(), parent.Pz());
-            if (chMother < 0)
+            if(chMother < 0)
               arm = ArmPod(sameSign, neutral, mom, qT);
             else
               arm = ArmPod(neutral, sameSign, mom, qT);
-            //if (IsNotOmega && pdgMother * arm > 0)
-            // continue;
+
+            if (IsNotOmega && chMother * arm < 0)
+             continue;
 
             Float_t invMass = parent.M();
             if (invMass < mass_range_min || invMass > mass_range_max)
@@ -1442,6 +1449,14 @@ void MakeCombinBkgCandidates3Body(const char *trackTreeFileBkg = "treeBkgEvents_
             Float_t bxy = TMath::Sqrt(d0x * d0x + d0y * d0y);
             if (d0x < 0)
               bxy *= -1;
+
+            // pdg codes for the true candidate
+            // Lambda daughter 1 - Lambda daughter 2 - Xi/Omega daughter
+            // pdgDaughter[1] -> proton
+            // pdgIndex1 = (iMassHyp == 0) ? 1 : 2; // proton : pion
+            // pdgIndex0 = (iMassHyp == 0) ? 2 : 1; // pion : proton
+            // reco
+
             Int_t pdgTmp[3] = {pdgDaughter[pdgIndex0], pdgDaughter[pdgIndex1], pdgDaughter[0]};
             trueCand = IsTrueCandidate3Body(recProbe, pdgMother, pdgTmp);
 
@@ -1538,8 +1553,9 @@ void MakeCombinBkgCandidates3Body(const char *trackTreeFileBkg = "treeBkgEvents_
 }
 
 /*
-MakeCombinBkgCandidates2Body("treeBkgEvents.root","treeStrangeParticles_K0S.root", "_K0S", 310, "../setups/setup_proposal_40GeV.txt", 0.003, kTRUE, kTRUE, kTRUE,4)
+MakeCombinBkgCandidates2Body("treeStrangeParticles_K0S.root","treeStrangeParticles_K0S.root", "_K0S", 310, "../setups/setup_proposal_40GeV.txt", 0.00, kFALSE, kTRUE, kTRUE,4)
 MakeCombinBkgCandidates2Body("treeStrangeParticles_LAMBDA.root","treeStrangeParticles_LAMBDA.root", "_LAMBDA", 3122, "../setups/setup_proposal_40GeV.txt", 0.00, kFALSE, kTRUE, kTRUE,4)
+MakeCombinBkgCandidates2Body("treeStrangeParticles_ANTILAMBDA.root","treeStrangeParticles_ANTILAMBDA.root", "_ANTILAMBDA", 3122, "../setups/setup_proposal_40GeV.txt", 0.00, kFALSE, kTRUE, kTRUE,4)
 MakeCombinBkgCandidates2Body("treeBkgEvents.root","treeStrangeParticles_ANTILAMBDA.root", "_ANTILAMBDA", -3122, "../setups/setup_proposal_40GeV.txt", 0.003, kTRUE, kTRUE, kTRUE,4)
 MakeCombinBkgCandidates2Body("treeBkgEvents.root","treeStrangeParticles_XI.root", "_XI", 3312, "../setups/setup_proposal_40GeV.txt", 0.003, kTRUE, kTRUE, kTRUE,4)
 MakeCombinBkgCandidates2Body("treeBkgEvents.root","treeStrangeParticles_ANTIXI.root", "_ANTIXI", 3312, "../setups/setup_proposal_40GeV.txt", 0.003, kTRUE, kTRUE, kTRUE,4)
