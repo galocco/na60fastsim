@@ -431,8 +431,14 @@ int IsTrueCandidate2Body(KMCProbeFwd tr[], int pdgMother){
 
 int IsTrueCandidate3Body(KMCProbeFwd tr[], int pdgMother, int pdgguess[]){
   if (tr[2].GetPdg() != pdgguess[2]) return 0;
-  if (tr[1].GetPdg() != pdgguess[0]) return 0;
-  if (tr[0].GetPdg() != pdgguess[1]) return 0;
+  if(pdgMother==3334){
+    if (tr[0].GetPdg() != pdgguess[0]) return 0;
+    if (tr[1].GetPdg() != pdgguess[1]) return 0;
+  }
+  else{
+    if (tr[1].GetPdg() != pdgguess[0]) return 0;
+    if (tr[0].GetPdg() != pdgguess[1]) return 0;
+  }
 
   for(int i=0; i<3; i++){
     if (TMath::Abs(tr[i].GetPdgMother()) != TMath::Abs(pdgMother)) return 0;
