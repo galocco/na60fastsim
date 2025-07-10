@@ -29,341 +29,377 @@
 
 double vX = 0, vY = 0, vZ = 0; // event vertex
 
-
 TDatime dt;
 
-void runBkgVT(Int_t nevents = 100, 
-	      double Eint = 40.,
-            const char *setup = "/home/giacomo/na60fastsim/files/setups/setup-proposal.txt",
-	      int minITShits=4,
-	      double chi2Cut = 1.5,
-	      bool simulateBg=kFALSE,
-	      bool optLastLayClean=kFALSE)
+void runBkgVT(Int_t nevents = 100,
+              double Eint = 40.,
+              const char *setup = "/home/giacomo/na60fastsim_galocco/files/setups/setup_proposal_40GeV.txt",
+              const char *output_tree = "/home/giacomo/na60fastsim_galocco/files/macros/treeBkgEvents.root",
+              const char *output_hist = "/home/giacomo/na60fastsim_galocco/files/macros/bkgdistributions.root",
+              int minITShits = 4,
+              double chi2Cut = 1.5,
+              bool simulateBg = kTRUE,
+              bool optLastLayClean = kFALSE)
 {
 
-  int refreshBg = 100;
-  static UInt_t seed = dt.Get();
-  gRandom->SetSeed(seed);
-  //gSystem->Setenv("PYTHIA8DATA", gSystem->ExpandPathName("$ALICE_ROOT/PYTHIA8/pythia8210/xmldoc")); // check if pythia8 path is set correctly !!!!
-  
-  
-  TH3F *h3DPiBkg = new TH3F("h3DPiBkg", "pt,y,phi pions", 50, 0., 5., 50, 0., 5., 50, 0, 2 * TMath::Pi());
-  TH3F *h3DKBkg = new TH3F("h3DKBkg", "pt,y,phi pions", 50, 0., 5., 50, 0., 5., 50, 0, 2 * TMath::Pi());
-  TH3F *h3DPBkg = new TH3F("h3DPBkg", "pt,y,phi pions", 50, 0., 5., 50, 0., 5., 50, 0, 2 * TMath::Pi());
-  TH2F* hResidPVsP = new TH2F("hResidPVsP","",100,0.,10.,100,-0.5,0.5);
-  TH2F* hResidPVsPFake = new TH2F("hResidPVsPFake","",100,0.,10.,100,-0.5,0.5);
-  TH2F* hResidPVsPGood = new TH2F("hResidPVsPGood","",100,0.,10.,100,-0.5,0.5);
-  TH2F* hResidPVsEta = new TH2F("hResidPVsEta","",40,1.,5.,100,-0.5,0.5);
-  TH2F* hResidPtVsPt = new TH2F("hResidPtVsPt","",100,0.,10.,100,-0.5,0.5);
-  TH2F* hResidPzVsPt = new TH2F("hResidPzVsPt","",100,0.,10.,100,-0.5,0.5);
-  TH2F* hResidPzVsPz = new TH2F("hResidPzVsPz","",100,0.,10.,100,-0.5,0.5);
+      int refreshBg = 100;
+      static UInt_t seed = dt.Get();
+      gRandom->SetSeed(seed);
+      // gSystem->Setenv("PYTHIA8DATA", gSystem->ExpandPathName("$ALICE_ROOT/PYTHIA8/pythia8210/xmldoc")); // check if pythia8 path is set correctly !!!!
 
-  TH1F* hRecX = new TH1F("hRecX","",500,-0.2,0.2);
-  TH1F* hRecY = new TH1F("hRecY","",500,-0.2,0.2);
-  TH1F* hRecXY = new TH1F("hRecXY","",5000,0,0.5);
+      TH3F *h3DPiBkg = new TH3F("h3DPiBkg", "pt,y,phi pions", 50, 0., 5., 50, 0., 5., 50, 0, 2 * TMath::Pi());
+      TH3F *h3DKBkg = new TH3F("h3DKBkg", "pt,y,phi pions", 50, 0., 5., 50, 0., 5., 50, 0, 2 * TMath::Pi());
+      TH3F *h3DPBkg = new TH3F("h3DPBkg", "pt,y,phi pions", 50, 0., 5., 50, 0., 5., 50, 0, 2 * TMath::Pi());
+      TH2F *hResidPVsP = new TH2F("hResidPVsP", "", 200, 0., 20., 400, -0.5, 0.5);
+      TH2F *hResidPVsPFake = new TH2F("hResidPVsPFake", "", 100, 0., 10., 100, -0.5, 0.5);
+      TH2F *hResidPVsPGood = new TH2F("hResidPVsPGood", "", 100, 0., 10., 100, -0.5, 0.5);
+      TH2F *hResidPVsEta = new TH2F("hResidPVsEta", "", 40, 1., 5., 100, -0.5, 0.5);
+      TH2F *hResidPtVsPt = new TH2F("hResidPtVsPt", "", 30, 0., 3., 200, -0.5, 0.5);
+      TH2F *hResidD0VsPt = new TH2F("hResidD0VsPt", "", 30, 0., 3., 200, -0.25, 0.25);
+      TH2F *hResidPzVsPt = new TH2F("hResidPzVsPt", "", 30, 0., 3., 100, -0.5, 0.5);
+      TH2F *hResidPzVsPz = new TH2F("hResidPzVsPz", "", 100, 0., 10., 100, -0.5, 0.5);
 
- 
-  TH1F *hNevents = new TH1F("hNevents", "", 1, 0, 1);
-  TH1F* hGenStat = new TH1F("hGenStat","",18,0.5,18.5);
-  hGenStat->GetXaxis()->SetBinLabel(1,"#pi to gen");
-  hGenStat->GetXaxis()->SetBinLabel(2,"#pi bad SolveSingleTrack");
-  hGenStat->GetXaxis()->SetBinLabel(3,"#pi bad GetWinnerMCTrack");
-  hGenStat->GetXaxis()->SetBinLabel(4,"#pi bad chi2");
-  hGenStat->GetXaxis()->SetBinLabel(5,"#pi in tree");
-  hGenStat->GetXaxis()->SetBinLabel(6,"#pi with fake clusters");
-  hGenStat->GetXaxis()->SetBinLabel(7,"K to gen");
-  hGenStat->GetXaxis()->SetBinLabel(8,"K bad SolveSingleTrack");
-  hGenStat->GetXaxis()->SetBinLabel(9,"K bad GetWinnerMCTrack");
-  hGenStat->GetXaxis()->SetBinLabel(10,"K bad chi2");
-  hGenStat->GetXaxis()->SetBinLabel(11,"K in tree");
-  hGenStat->GetXaxis()->SetBinLabel(12,"K with fake clusters");
-  hGenStat->GetXaxis()->SetBinLabel(13,"p to gen");
-  hGenStat->GetXaxis()->SetBinLabel(14,"p bad SolveSingleTrack");
-  hGenStat->GetXaxis()->SetBinLabel(15,"p bad GetWinnerMCTrack");
-  hGenStat->GetXaxis()->SetBinLabel(16,"p bad chi2");
-  hGenStat->GetXaxis()->SetBinLabel(17,"p in tree");
-  hGenStat->GetXaxis()->SetBinLabel(18,"p with fake clusters");
-  
-  
-  //Magnetic field and detector parameters
+      TH2F *hRecPVsEta = new TH2F("hRecPVsEta", "", 40, 1., 5., 200, 0., 20);
 
-  KMCDetectorFwd *det = new KMCDetectorFwd();
-  printf("Setup file = %s\n",setup);
-  det->ReadSetup(setup, setup);
-  det->InitBkg(Eint);
-  
-  det->ForceLastActiveLayer(det->GetLastActiveLayerITS()); // will not propagate beyond VT
-  if(optLastLayClean) det->setLastITSLayerClean(true);
+      TH1F *hRecX = new TH1F("hRecX", "", 500, -0.2, 0.2);
+      TH1F *hRecY = new TH1F("hRecY", "", 500, -0.2, 0.2);
+      TH1F *hRecXY = new TH1F("hRecXY", "", 5000, 0, 0.5);
 
-  det->SetMinITSHits(TMath::Min(minITShits,det->GetNumberOfActiveLayersITS())); //NA60+
-  // we don't need MS part here, even if it is in the setup
-  //det->SetMinITSHits(det->GetNumberOfActiveLayersITS()-1); //NA60
-  det->SetMinMSHits(0); //NA60+
-  //det->SetMinMSHits(det->GetNumberOfActiveLayersMS()-1); //NA60
-  det->SetMinTRHits(0);
-  //
-  // max number of seeds on each layer to propagate (per muon track)
-  det->SetMaxSeedToPropagate(3000);
-  //
-  // set chi2 cuts
-  det->SetMaxChi2Cl(10.);  // max track to cluster chi2
-  det->SetMaxChi2NDF(3.5); // max total chi2/ndf
-  det->SetMaxChi2Vtx(-20);  // fiducial cut on chi2 of convergence to vtx
-  
-  // IMPORTANT FOR NON-UNIFORM FIELDS
-  det->SetDefStepAir(1);
-  det->SetMinP2Propagate(0.01); //NA60+
-  //det->SetMinP2Propagate(2); //NA60
-  //
-  det->SetIncludeVertex(kFALSE); // count vertex as an extra measured point
-  //  det->SetApplyBransonPCorrection();
-  det->ImposeVertex(0., 0., 0.);
-  //
-  det->BookControlHistos();
+      TH1F *hNevents = new TH1F("hNevents", "", 1, 0, 1);
+      TH1F *hGenStat = new TH1F("hGenStat", "", 18, 0.5, 18.5);
+      hGenStat->GetXaxis()->SetBinLabel(1, "#pi to gen");
+      hGenStat->GetXaxis()->SetBinLabel(2, "#pi bad SolveSingleTrack");
+      hGenStat->GetXaxis()->SetBinLabel(3, "#pi bad GetWinnerMCTrack");
+      hGenStat->GetXaxis()->SetBinLabel(4, "#pi bad chi2");
+      hGenStat->GetXaxis()->SetBinLabel(5, "#pi in tree");
+      hGenStat->GetXaxis()->SetBinLabel(6, "#pi with fake clusters");
+      hGenStat->GetXaxis()->SetBinLabel(7, "K to gen");
+      hGenStat->GetXaxis()->SetBinLabel(8, "K bad SolveSingleTrack");
+      hGenStat->GetXaxis()->SetBinLabel(9, "K bad GetWinnerMCTrack");
+      hGenStat->GetXaxis()->SetBinLabel(10, "K bad chi2");
+      hGenStat->GetXaxis()->SetBinLabel(11, "K in tree");
+      hGenStat->GetXaxis()->SetBinLabel(12, "K with fake clusters");
+      hGenStat->GetXaxis()->SetBinLabel(13, "p to gen");
+      hGenStat->GetXaxis()->SetBinLabel(14, "p bad SolveSingleTrack");
+      hGenStat->GetXaxis()->SetBinLabel(15, "p bad GetWinnerMCTrack");
+      hGenStat->GetXaxis()->SetBinLabel(16, "p bad chi2");
+      hGenStat->GetXaxis()->SetBinLabel(17, "p in tree");
+      hGenStat->GetXaxis()->SetBinLabel(18, "p with fake clusters");
 
-  TVirtualMagField* fld = TGeoGlobalMagField::Instance()->GetField();
-  if (fld->IsA() == MagField::Class()) {
-    MagField* mag = (MagField*) fld;
-    int BNreg = mag->GetNReg();
-    const double *BzMin = mag->GetZMin();
-    const double *BzMax = mag->GetZMax();
-    const double *BVal;
-    printf("*************************************\n");
-    printf("number of magnetic field regions = %d\n", BNreg);
-    for (int i = 0; i < BNreg; i++){
-      BVal = mag->GetBVals(i);
-      printf("*** Field region %d ***\n", i);
-      if (i == 0){
-	printf("Bx = %f B = %f Bz = %f zmin = %f zmax = %f\n", BVal[0], BVal[1], BVal[2], BzMin[i], BzMax[i]);
-      }else if (i == 1){
-	printf("B = %f Rmin = %f Rmax = %f zmin = %f zmax = %f\n", BVal[0], BVal[1], BVal[2], BzMin[i], BzMax[i]);
+      // Magnetic field and detector parameters
+
+      KMCDetectorFwd *det = new KMCDetectorFwd();
+      printf("Setup file = %s\n", setup);
+      det->ReadSetup(setup, setup);
+      det->InitBkg(Eint);
+
+      det->ForceLastActiveLayer(det->GetLastActiveLayerITS()); // will not propagate beyond VT
+      if (optLastLayClean)
+            det->setLastITSLayerClean(true);
+
+      det->SetMinITSHits(TMath::Min(minITShits, det->GetNumberOfActiveLayersITS())); // NA60+
+      // we don't need MS part here, even if it is in the setup
+      // det->SetMinITSHits(det->GetNumberOfActiveLayersITS()-1); //NA60
+      det->SetMinMSHits(0); // NA60+
+      // det->SetMinMSHits(det->GetNumberOfActiveLayersMS()-1); //NA60
+      det->SetMinTRHits(0);
+      //
+      // max number of seeds on each layer to propagate (per muon track)
+      det->SetMaxSeedToPropagate(10);
+      //
+      // set chi2 cuts
+      det->SetMaxChi2Cl(10.);  // max track to cluster chi2
+      det->SetMaxChi2NDF(3.5); // max total chi2/ndf
+      det->SetMaxChi2Vtx(-20); // fiducial cut on chi2 of convergence to vtx
+
+      // IMPORTANT FOR NON-UNIFORM FIELDS
+      det->SetDefStepAir(0.1);
+      det->SetDefStepMat(0.005);
+      det->SetMinP2Propagate(0.1); // NA60+
+      // det->SetMinP2Propagate(2); //NA60
+      //
+      det->SetIncludeVertex(kFALSE); // count vertex as an extra measured point
+      //  det->SetApplyBransonPCorrection();
+      det->ImposeVertex(0., 0., 0.);
+      //
+      det->BookControlHistos();
+
+      TVirtualMagField *fld = TGeoGlobalMagField::Instance()->GetField();
+      if (fld->IsA() == MagField::Class())
+      {
+            MagField *mag = (MagField *)fld;
+            int BNreg = mag->GetNReg();
+            const double *BzMin = mag->GetZMin();
+            const double *BzMax = mag->GetZMax();
+            const double *BVal;
+            printf("*************************************\n");
+            printf("number of magnetic field regions = %d\n", BNreg);
+            for (int i = 0; i < BNreg; i++)
+            {
+                  BVal = mag->GetBVals(i);
+                  printf("*** Field region %d ***\n", i);
+                  if (i == 0)
+                  {
+                        printf("Bx = %f B = %f Bz = %f zmin = %f zmax = %f\n", BVal[0], BVal[1], BVal[2], BzMin[i], BzMax[i]);
+                  }
+                  else if (i == 1)
+                  {
+                        printf("B = %f Rmin = %f Rmax = %f zmin = %f zmax = %f\n", BVal[0], BVal[1], BVal[2], BzMin[i], BzMax[i]);
+                  }
+            }
       }
-    }
-  }
 
-  // Get Pi, K, P spectral shapes
-  TF1* fdNdYPi=det->GetdNdYPi();
-  TF1* fdNdYK=det->GetdNdYK();
-  TF1* fdNdYP=det->GetdNdYP();
-  TF1* fdNdPtPi=det->GetdNdPtPi();
-  TF1* fdNdPtK=det->GetdNdPtK();
-  TF1* fdNdPtP=det->GetdNdPtP();
+      // Get Pi, K, P spectral shapes
+      TF1 *fdNdYPi = det->GetdNdYPi();
+      TF1 *fdNdYK = det->GetdNdYK();
+      TF1 *fdNdYP = det->GetdNdYP();
+      TF1 *fdNdPtPi = det->GetdNdPtPi();
+      TF1 *fdNdPtK = det->GetdNdPtK();
+      TF1 *fdNdPtP = det->GetdNdPtP();
 
+      TFile *f = new TFile(output_tree, "RECREATE");
+      TTree *tree = new TTree("tree", "tree Bkg");
+      TClonesArray *arrtr = new TClonesArray("KMCProbeFwd");
+      TClonesArray &aarrtr = *arrtr;
+      tree->Branch("tracks", &arrtr);
 
+      for (Int_t iev = 0; iev < nevents; iev++)
+      {
+            aarrtr.Clear();
+            printf(" ***************  ev = %d \n", iev);
+            double pxyz[3];
+            hNevents->Fill(0.5);
+            if (simulateBg && (iev % refreshBg) == 0)
+                  det->GenBgEvent(vX, vY, vZ);
 
+            double ntrPi = gRandom->Poisson(det->GetNChPi());
+            // printf("fNChPi=%f ntrPi=%f\n", det->GetNChPi(), ntrPi);
 
+            double yrap, pt, phi;
+            int charge;
+            double mass;
+            Int_t icount = 0;
+            for (int itr = 0; itr < ntrPi; itr++)
+            {
+                  yrap = fdNdYPi->GetRandom();
+                  pt = fdNdPtPi->GetRandom();
+                  phi = gRandom->Rndm() * TMath::Pi() * 2;
+                  charge = gRandom->Rndm() > 0.52 ? 1 : -1;
+                  mass = KMCDetectorFwd::kMassPi;
+                  h3DPiBkg->Fill(pt, yrap, phi);
+                  double pxyz[3] = {pt * TMath::Cos(phi), pt * TMath::Sin(phi), TMath::Sqrt(pt * pt + mass * mass) * TMath::SinH(yrap)};
+                  double ptotgen = TMath::Sqrt(pxyz[0] * pxyz[0] + pxyz[1] * pxyz[1] + pxyz[2] * pxyz[2]);
+                  double ptgen = pt;
+                  double pzgen = pxyz[2];
+                  double etagen = 0.5 * TMath::Log((ptotgen + pzgen) / (ptotgen - pzgen));
+                  hGenStat->Fill(1);
 
-  TFile *f = new TFile("treeBkgEvents.root", "RECREATE");
-  TTree *tree = new TTree("tree", "tree Bkg");
-  TClonesArray *arrtr = new TClonesArray("KMCProbeFwd");
-  TClonesArray &aarrtr = *arrtr;
-  tree->Branch("tracks", &arrtr);
-  
-  for (Int_t iev = 0; iev < nevents; iev++){
-    aarrtr.Clear();
-    printf(" ***************  ev = %d \n", iev);
-    double pxyz[3];
-    hNevents->Fill(0.5);
-    if (simulateBg && (iev % refreshBg) == 0)
-      det->GenBgEvent(vX, vY, vZ);
-    
-    double ntrPi = gRandom->Poisson(det->GetNChPi());
-    //printf("fNChPi=%f ntrPi=%f\n", det->GetNChPi(), ntrPi);
+                  TLorentzVector *ppi = new TLorentzVector(0., 0., 0., 0.);
+                  ppi->SetXYZM(pxyz[0], pxyz[1], pxyz[2], mass);
+                  if (!det->SolveSingleTrack(ppi->Pt(), ppi->Rapidity(), ppi->Phi(), mass, charge, vX, vY, vZ, 0, 1, 99))
+                  {
+                        hGenStat->Fill(2);
+                        continue;
+                  }
+                  KMCProbeFwd *trw = det->GetLayer(0)->GetWinnerMCTrack();
+                  if (!trw)
+                  {
+                        hGenStat->Fill(3);
+                        continue;
+                  }
+                  if (trw->GetNormChi2(kTRUE) > chi2Cut)
+                  {
+                        hGenStat->Fill(4);
+                        continue;
+                  }
+                  trw->GetPXYZ(pxyz);
+                  double xyz[3];
+                  trw->GetXYZ(xyz);
+                  double ptotrec = TMath::Sqrt(pxyz[0] * pxyz[0] + pxyz[1] * pxyz[1] + pxyz[2] * pxyz[2]);
+                  double ptrec = TMath::Sqrt(pxyz[0] * pxyz[0] + pxyz[1] * pxyz[1]);
+                  if (trw->GetNFakeITSHits() > 0)
+                  {
+                        hResidPVsPFake->Fill(ptotgen, ptotrec - ptotgen);
+                        hGenStat->Fill(6);
+                        continue;
+                  }
+                  else
+                        hResidPVsPGood->Fill(ptotgen, ptotrec - ptotgen);
+                  new (aarrtr[icount]) KMCProbeFwd(*trw);
+                  hGenStat->Fill(5);
+                  double pzrec = pxyz[2];
+                  hResidPVsP->Fill(ptotgen, ptotrec - ptotgen);
+                  hResidPVsEta->Fill(etagen, ptotrec - ptotgen);
+                  hRecPVsEta->Fill(etagen, ptotgen);
+                  hResidPtVsPt->Fill(ptgen, ptrec - ptgen);
+                  hResidD0VsPt->Fill(ptgen, trw->GetY());
+                  hResidPzVsPt->Fill(ptgen, pzrec - pzgen);
+                  hResidPzVsPz->Fill(pzgen, pzrec - pzgen);
+                  hRecX->Fill(xyz[0]);
+                  hRecY->Fill(xyz[1]);
+                  hRecXY->Fill(TMath::Sqrt(xyz[0] * xyz[0] + xyz[1] * xyz[1]));
+                  icount++;
+            }
 
-    double yrap, pt, phi;
-    int charge;
-    double mass;
-    Int_t icount = 0;
-    for (int itr = 0; itr < ntrPi; itr++){	
-      yrap = fdNdYPi->GetRandom();
-      pt = fdNdPtPi->GetRandom();
-      phi = gRandom->Rndm() * TMath::Pi() * 2;
-      charge = gRandom->Rndm() > 0.52 ? 1 : -1;
-      mass = KMCDetectorFwd::kMassPi;
-      h3DPiBkg->Fill(pt, yrap, phi);
-      double pxyz[3] = {pt * TMath::Cos(phi), pt * TMath::Sin(phi), TMath::Sqrt(pt * pt + mass * mass) * TMath::SinH(yrap)};
-      double ptotgen=TMath::Sqrt(pxyz[0]*pxyz[0]+pxyz[1]*pxyz[1]+pxyz[2]*pxyz[2]);
-      double ptgen=pt;
-      double pzgen=pxyz[2];
-      double etagen=0.5*TMath::Log((ptotgen+pzgen)/(ptotgen-pzgen));
-      hGenStat->Fill(1);
+            // kaons
+            double ntrK = gRandom->Poisson(det->GetNChK());
+            // printf("fNChK=%f ntrK=%f\n", det->GetNChK(), ntrK);
 
-      TLorentzVector *ppi = new TLorentzVector(0., 0., 0., 0.);
-      ppi->SetXYZM(pxyz[0], pxyz[1], pxyz[2], mass);
-      if (!det->SolveSingleTrack(ppi->Pt(), ppi->Rapidity(), ppi->Phi(), mass, charge, vX, vY, vZ, 0, 1, 99)){
-	hGenStat->Fill(2);
-	continue;
+            for (int itr = 0; itr < ntrK; itr++)
+            {
+                  yrap = fdNdYK->GetRandom();
+                  pt = fdNdPtK->GetRandom();
+                  phi = gRandom->Rndm() * TMath::Pi() * 2;
+                  charge = gRandom->Rndm() > 0.3 ? 1 : -1;
+                  mass = KMCDetectorFwd::kMassK;
+                  h3DKBkg->Fill(pt, yrap, phi);
+                  double pxyz[3] = {pt * TMath::Cos(phi), pt * TMath::Sin(phi), TMath::Sqrt(pt * pt + mass * mass) * TMath::SinH(yrap)};
+                  hGenStat->Fill(7);
+                  double ptotgen = TMath::Sqrt(pxyz[0] * pxyz[0] + pxyz[1] * pxyz[1] + pxyz[2] * pxyz[2]);
+                  double ptgen = pt;
+                  double pzgen = pxyz[2];
+                  double etagen = 0.5 * TMath::Log((ptotgen + pzgen) / (ptotgen - pzgen));
+
+                  TLorentzVector *pk = new TLorentzVector(0., 0., 0., 0.);
+                  pk->SetXYZM(pxyz[0], pxyz[1], pxyz[2], mass);
+                  if (!det->SolveSingleTrack(pk->Pt(), pk->Rapidity(), pk->Phi(), mass, charge, vX, vY, vZ, 0, 1, 99))
+                  {
+                        hGenStat->Fill(8);
+                        continue;
+                  }
+                  KMCProbeFwd *trw2 = det->GetLayer(0)->GetWinnerMCTrack();
+                  if (!trw2)
+                  {
+                        hGenStat->Fill(9);
+                        continue;
+                  }
+                  if (trw2->GetNormChi2(kTRUE) > chi2Cut)
+                  {
+                        hGenStat->Fill(10);
+                        continue;
+                  }
+                  trw2->GetPXYZ(pxyz);
+                  double xyz[3];
+                  trw2->GetXYZ(xyz);
+                  double ptotrec = TMath::Sqrt(pxyz[0] * pxyz[0] + pxyz[1] * pxyz[1] + pxyz[2] * pxyz[2]);
+                  double ptrec = TMath::Sqrt(pxyz[0] * pxyz[0] + pxyz[1] * pxyz[1]);
+                  if (trw2->GetNFakeITSHits() > 0){
+                        hResidPVsPFake->Fill(ptotgen, ptotrec - ptotgen);
+                        hGenStat->Fill(12);
+                        continue;
+                  }
+                  else
+                        hResidPVsPGood->Fill(ptotgen, ptotrec - ptotgen);
+                  // if(TMath::Sqrt(xyz[0]*xyz[0]+xyz[1]*xyz[1])<0.01) continue;
+                  // printf("charge = %d, %f \n", charge, trw2->GetCharge());
+                  new (aarrtr[icount]) KMCProbeFwd(*trw2);
+                  hGenStat->Fill(11);
+                  double pzrec = pxyz[2];
+                  hResidPVsP->Fill(ptotgen, ptotrec - ptotgen);
+                  hResidPVsEta->Fill(etagen, ptotrec - ptotgen);
+                  hRecPVsEta->Fill(etagen, ptotgen);
+                  hResidPtVsPt->Fill(ptgen, ptrec - ptgen);
+                  hResidPzVsPt->Fill(ptgen, pzrec - pzgen);
+                  hResidPzVsPz->Fill(pzgen, pzrec - pzgen);
+                  hRecX->Fill(xyz[0]);
+                  hRecY->Fill(xyz[1]);
+                  hRecXY->Fill(TMath::Sqrt(xyz[0] * xyz[0] + xyz[1] * xyz[1]));
+                  hResidD0VsPt->Fill(ptgen, trw2->GetY());
+
+                  icount++;
+            }
+
+            // protons
+            double ntrP = gRandom->Poisson(det->GetNChP());
+            // printf("fNChP=%f ntrP=%f\n", det->GetNChP(), ntrP);
+            for (int itr = 0; itr < ntrP; itr++)
+            {
+                  yrap = fdNdYP->GetRandom();
+                  pt = fdNdPtP->GetRandom();
+                  phi = gRandom->Rndm() * TMath::Pi() * 2;
+                  charge = 1;
+                  mass = KMCDetectorFwd::kMassP;
+                  h3DPBkg->Fill(pt, yrap, phi);
+                  double pxyz[3] = {pt * TMath::Cos(phi), pt * TMath::Sin(phi), TMath::Sqrt(pt * pt + mass * mass) * TMath::SinH(yrap)};
+                  hGenStat->Fill(13);
+                  double ptotgen = TMath::Sqrt(pxyz[0] * pxyz[0] + pxyz[1] * pxyz[1] + pxyz[2] * pxyz[2]);
+                  double ptgen = pt;
+                  double pzgen = pxyz[2];
+                  double etagen = 0.5 * TMath::Log((ptotgen + pzgen) / (ptotgen - pzgen));
+
+                  TLorentzVector *pp = new TLorentzVector(0., 0., 0., 0.);
+                  pp->SetXYZM(pxyz[0], pxyz[1], pxyz[2], mass);
+                  if (!det->SolveSingleTrack(pp->Pt(), pp->Rapidity(), pp->Phi(), mass, charge, vX, vY, vZ, 0, 1, 99))
+                  {
+                        hGenStat->Fill(14);
+                        continue;
+                  }
+                  KMCProbeFwd *trw3 = det->GetLayer(0)->GetWinnerMCTrack();
+                  if (!trw3)
+                  {
+                        hGenStat->Fill(15);
+                        continue;
+                  }
+                  if (trw3->GetNormChi2(kTRUE) > chi2Cut)
+                  {
+                        hGenStat->Fill(16);
+                        continue;
+                  }
+                  trw3->GetPXYZ(pxyz);
+                  double xyz[3];
+                  trw3->GetXYZ(xyz);
+                  // if(TMath::Sqrt(xyz[0]*xyz[0]+xyz[1]*xyz[1])<0.01) continue;
+
+                  double ptotrec = TMath::Sqrt(pxyz[0] * pxyz[0] + pxyz[1] * pxyz[1] + pxyz[2] * pxyz[2]);
+                  double ptrec = TMath::Sqrt(pxyz[0] * pxyz[0] + pxyz[1] * pxyz[1]);
+                  if (trw3->GetNFakeITSHits() > 0){
+                        hResidPVsPFake->Fill(ptotgen, ptotrec - ptotgen);
+                        hGenStat->Fill(18);
+                        continue;
+                  }
+                  else
+                        hResidPVsPGood->Fill(ptotgen, ptotrec - ptotgen);
+                  // printf("charge = %d, %f \n", charge, trw3->GetCharge());
+                  new (aarrtr[icount]) KMCProbeFwd(*trw3);
+                  hGenStat->Fill(17);
+                  double pzrec = pxyz[2];
+                  hResidPVsP->Fill(ptotgen, ptotrec - ptotgen);
+                  hResidPVsEta->Fill(etagen, ptotrec - ptotgen);
+                  hRecPVsEta->Fill(etagen, ptotgen);
+                  hResidPtVsPt->Fill(ptgen, ptrec - ptgen);
+                  hResidPzVsPt->Fill(ptgen, pzrec - pzgen);
+                  hResidPzVsPz->Fill(pzgen, pzrec - pzgen);
+                  hRecX->Fill(xyz[0]);
+                  hRecY->Fill(xyz[1]);
+                  hRecXY->Fill(TMath::Sqrt(xyz[0] * xyz[0] + xyz[1] * xyz[1]));
+                  icount++;
+                  hResidD0VsPt->Fill(ptgen, trw3->GetY() * 10000);
+            }
+            printf("Pions+Kaons+Protons in array = %d out of %.0f \n", icount, ntrPi + ntrK + ntrP);
+            tree->Fill();
       }
-      KMCProbeFwd *trw = det->GetLayer(0)->GetWinnerMCTrack();
-      if (!trw){
-	hGenStat->Fill(3);
-	continue;
-      }
-      if (trw->GetNormChi2(kTRUE) > chi2Cut){
-	hGenStat->Fill(4);
-	continue;
-      }
-      trw->GetPXYZ(pxyz);
-      double xyz[3];
-      trw->GetXYZ(xyz);
-      if(TMath::Sqrt(xyz[0]*xyz[0]+xyz[1]*xyz[1])<0.01) continue;
+      f->cd();
+      tree->Write();
+      f->Close();
 
-      //printf("charge = %d, %f \n", charge, trw->GetCharge());
-      new (aarrtr[icount]) KMCProbeFwd(*trw);
-      hGenStat->Fill(5);
-      if(trw->GetNFakeITSHits()>0) hGenStat->Fill(6);
-      double ptotrec=TMath::Sqrt(pxyz[0]*pxyz[0]+pxyz[1]*pxyz[1]+pxyz[2]*pxyz[2]);
-      double ptrec=TMath::Sqrt(pxyz[0]*pxyz[0]+pxyz[1]*pxyz[1]);
-      double pzrec=pxyz[2];
-      hResidPVsP->Fill(ptotgen,ptotrec-ptotgen);
-      hResidPVsEta->Fill(etagen,ptotrec-ptotgen);
-      if(trw->GetNFakeITSHits()>0) hResidPVsPFake->Fill(ptotgen,ptotrec-ptotgen);
-      else hResidPVsPGood->Fill(ptotgen,ptotrec-ptotgen);
-      hResidPtVsPt->Fill(ptgen,ptrec-ptgen);
-      hResidPzVsPt->Fill(ptgen,pzrec-pzgen);
-      hResidPzVsPz->Fill(pzgen,pzrec-pzgen);
-      hRecX->Fill(xyz[0]);
-      hRecY->Fill(xyz[1]);
-      hRecXY->Fill(TMath::Sqrt(xyz[0]*xyz[0]+xyz[1]*xyz[1]));
-      icount++;
-    }
-
-    // kaons
-    double ntrK = gRandom->Poisson(det->GetNChK());
-    //printf("fNChK=%f ntrK=%f\n", det->GetNChK(), ntrK);
-    
-    for (int itr = 0; itr < ntrK; itr++){
-      yrap = fdNdYK->GetRandom();
-      pt = fdNdPtK->GetRandom();
-      phi = gRandom->Rndm() * TMath::Pi() * 2;
-      charge = gRandom->Rndm() > 0.3 ? 1 : -1;
-      mass = KMCDetectorFwd::kMassK;
-      h3DKBkg->Fill(pt, yrap, phi);
-      double pxyz[3] = {pt * TMath::Cos(phi), pt * TMath::Sin(phi), TMath::Sqrt(pt * pt + mass * mass) * TMath::SinH(yrap)};
-      hGenStat->Fill(7);
-      double ptotgen=TMath::Sqrt(pxyz[0]*pxyz[0]+pxyz[1]*pxyz[1]+pxyz[2]*pxyz[2]);
-      double ptgen=pt;
-      double pzgen=pxyz[2];
-      double etagen=0.5*TMath::Log((ptotgen+pzgen)/(ptotgen-pzgen));
-     
-      TLorentzVector *pk = new TLorentzVector(0., 0., 0., 0.);
-      pk->SetXYZM(pxyz[0], pxyz[1], pxyz[2], mass);
-      if (!det->SolveSingleTrack(pk->Pt(), pk->Rapidity(), pk->Phi(), mass, charge, vX, vY, vZ, 0, 1, 99)){
-	hGenStat->Fill(8);
-	continue;
-      }
-      KMCProbeFwd *trw2 = det->GetLayer(0)->GetWinnerMCTrack();
-      if (!trw2){
-	hGenStat->Fill(9);
-	continue;
-      }
-      if (trw2->GetNormChi2(kTRUE) > chi2Cut){
-	hGenStat->Fill(10);
-	continue;
-      }
-      trw2->GetPXYZ(pxyz);
-      double xyz[3];
-      trw2->GetXYZ(xyz);
-      if(TMath::Sqrt(xyz[0]*xyz[0]+xyz[1]*xyz[1])<0.01) continue;
-      //printf("charge = %d, %f \n", charge, trw2->GetCharge());
-      new (aarrtr[icount]) KMCProbeFwd(*trw2);
-      hGenStat->Fill(11);
-      if(trw2->GetNFakeITSHits()>0) hGenStat->Fill(12);
-      double ptotrec=TMath::Sqrt(pxyz[0]*pxyz[0]+pxyz[1]*pxyz[1]+pxyz[2]*pxyz[2]);
-      double ptrec=TMath::Sqrt(pxyz[0]*pxyz[0]+pxyz[1]*pxyz[1]);
-      double pzrec=pxyz[2];
-      hResidPVsP->Fill(ptotgen,ptotrec-ptotgen);
-      hResidPVsEta->Fill(etagen,ptotrec-ptotgen);
-      if(trw2->GetNFakeITSHits()>0) hResidPVsPFake->Fill(ptotgen,ptotrec-ptotgen);
-      else hResidPVsPGood->Fill(ptotgen,ptotrec-ptotgen);
-      hResidPtVsPt->Fill(ptgen,ptrec-ptgen);
-      hResidPzVsPt->Fill(ptgen,pzrec-pzgen);
-      hResidPzVsPz->Fill(pzgen,pzrec-pzgen);
-      hRecX->Fill(xyz[0]);
-      hRecY->Fill(xyz[1]);
-      hRecXY->Fill(TMath::Sqrt(xyz[0]*xyz[0]+xyz[1]*xyz[1]));
-      icount++;
-    }
-    
-    // protons
-    double ntrP = gRandom->Poisson(det->GetNChP());
-    //printf("fNChP=%f ntrP=%f\n", det->GetNChP(), ntrP);
-    for (int itr = 0; itr < ntrP; itr++){
-      yrap = fdNdYP->GetRandom();
-      pt = fdNdPtP->GetRandom();
-      phi = gRandom->Rndm() * TMath::Pi() * 2;
-      charge = 1;
-      mass = KMCDetectorFwd::kMassP;
-      h3DPBkg->Fill(pt, yrap, phi);
-      double pxyz[3] = {pt * TMath::Cos(phi), pt * TMath::Sin(phi), TMath::Sqrt(pt * pt + mass * mass) * TMath::SinH(yrap)};
-      hGenStat->Fill(13);
-      double ptotgen=TMath::Sqrt(pxyz[0]*pxyz[0]+pxyz[1]*pxyz[1]+pxyz[2]*pxyz[2]);
-      double ptgen=pt;
-      double pzgen=pxyz[2];
-      double etagen=0.5*TMath::Log((ptotgen+pzgen)/(ptotgen-pzgen));
-     
-      TLorentzVector *pp = new TLorentzVector(0., 0., 0., 0.);
-      pp->SetXYZM(pxyz[0], pxyz[1], pxyz[2], mass);
-      if (!det->SolveSingleTrack(pp->Pt(), pp->Rapidity(), pp->Phi(), mass, charge, vX, vY, vZ, 0, 1, 99)){
-	hGenStat->Fill(14);
-	continue;
-      }
-      KMCProbeFwd *trw3 = det->GetLayer(0)->GetWinnerMCTrack();
-      if (!trw3){
-	hGenStat->Fill(15);
-	continue;
-      }
-      if (trw3->GetNormChi2(kTRUE) > chi2Cut){
-	hGenStat->Fill(16);
-	continue;
-      }
-      trw3->GetPXYZ(pxyz);
-      double xyz[3];
-      trw3->GetXYZ(xyz);
-      if(TMath::Sqrt(xyz[0]*xyz[0]+xyz[1]*xyz[1])<0.01) continue;
-
-      //printf("charge = %d, %f \n", charge, trw3->GetCharge());
-      new (aarrtr[icount]) KMCProbeFwd(*trw3);
-      hGenStat->Fill(17);
-      if(trw3->GetNFakeITSHits()>0) hGenStat->Fill(18);
-      double ptotrec=TMath::Sqrt(pxyz[0]*pxyz[0]+pxyz[1]*pxyz[1]+pxyz[2]*pxyz[2]);
-      double ptrec=TMath::Sqrt(pxyz[0]*pxyz[0]+pxyz[1]*pxyz[1]);
-      double pzrec=pxyz[2];
-      hResidPVsP->Fill(ptotgen,ptotrec-ptotgen);
-      hResidPVsEta->Fill(etagen,ptotrec-ptotgen);
-      if(trw3->GetNFakeITSHits()>0) hResidPVsPFake->Fill(ptotgen,ptotrec-ptotgen);
-      else hResidPVsPGood->Fill(ptotgen,ptotrec-ptotgen);
-      hResidPtVsPt->Fill(ptgen,ptrec-ptgen);
-      hResidPzVsPt->Fill(ptgen,pzrec-pzgen);
-      hResidPzVsPz->Fill(pzgen,pzrec-pzgen);
-      hRecX->Fill(xyz[0]);
-      hRecY->Fill(xyz[1]);
-      hRecXY->Fill(TMath::Sqrt(xyz[0]*xyz[0]+xyz[1]*xyz[1]));
-      icount++;
-    }
-    printf("Pions+Kaons+Protons in array = %d out of %.0f \n",icount,ntrPi+ntrK+ntrP);
-    tree->Fill();
-  }
-  f->cd();
-  tree->Write();
-  f->Close();
-  
-  TFile *outfile = new TFile("bkgdistributions.root", "recreate");
-  outfile->cd();
-  hNevents->Write();
-  hGenStat->Write();
-  h3DPiBkg->Write();
-  h3DKBkg->Write();
-  h3DPBkg->Write();
-  hResidPVsP->Write();
-  hResidPVsPGood->Write();
-  hResidPVsPFake->Write();
-  hResidPVsEta->Write();
-  hResidPtVsPt->Write();
-  hResidPzVsPt->Write();
-  hResidPzVsPz->Write();
-  hRecX->Write();
-  hRecY->Write();
-  hRecXY->Write();
-  outfile->Close();
+      TFile *outfile = new TFile(output_hist, "recreate");
+      outfile->cd();
+      hNevents->Write();
+      hGenStat->Write();
+      h3DPiBkg->Write();
+      h3DKBkg->Write();
+      h3DPBkg->Write();
+      hResidPVsP->Write();
+      hResidPVsPGood->Write();
+      hResidPVsPFake->Write();
+      hResidPVsEta->Write();
+      hResidPtVsPt->Write();
+      hResidD0VsPt->Write();
+      hRecPVsEta->Write();
+      hResidPzVsPt->Write();
+      hResidPzVsPz->Write();
+      hRecX->Write();
+      hRecY->Write();
+      hRecXY->Write();
+      outfile->Close();
 }
